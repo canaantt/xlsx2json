@@ -1,0 +1,16 @@
+{
+  "name": "oncoscape-xlsx-json",
+  "version": "1.0.0",
+  "description": "",
+  "main": "xlsx-json.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Jenny Zhang",
+  "license": "ISC",
+  "dependencies": {
+    "sheetjs": "^1.0.21",
+    "xls-to-json": "^0.4.0",
+    "xlsx": "^0.11.18"
+  }
+}
