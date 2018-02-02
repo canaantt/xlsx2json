@@ -3,7 +3,7 @@ const _ = require("underscore");
 const XLSX =require("xlsx");
 const fs = require('fs');
 
-var workbook = XLSX.readFile("demo.xlsx");
+var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
 _.uniq(Object.keys(workbook.Sheets['PATIENTEVENT-CHEMO']).map(k=>workbook.Sheets['PATIENTEVENT-CHEMO'][k].t));
 Object.keys(workbook.Sheets['PATIENTEVENT-CHEMO']).filter(k=>workbook.Sheets['PATIENTEVENT-CHEMO'][k].t == 'undefined');
 var allSheetNames =  Object.keys(workbook.Sheets);
@@ -15,15 +15,21 @@ allSheetNames.forEach(function(sheetname){
     };
     if(sheet.type === 'PATIENT') {
         var data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetname], 
-            { header:1, skipUndefined: false, defval: null});
+            { header:1, skipUndefined: false});
         sheet.header = data[0];
         data.splice(0, 1);
         sheet.data = data;
         var obj = {};
         var ids = sheet.data.map(d=>d[0]);
         var fields = {};
-        var loc = Object.keys(workbook.Sheets.PATIENT).filter(k=>k[1]=='2'&& k.length==2);
-        var colTypes = loc.map(c=>workbook.Sheets.PATIENT[c].t);
+        var loc = Object.keys(workbook.Sheets.PATIENT).filter(k=>k[1]=='1'&& k.length==2);
+        var colTypes = loc.map(c=>{
+            var row = 2;
+            while (workbook.Sheets.PATIENT[c[0]+row].t === 'z') {
+                row++;
+            }
+            return workbook.Sheets.PATIENT[c[0]+row].t;
+        });
         loc.forEach(function(l, i){
             var v;
             if(colTypes[i] === 'n') {
@@ -38,7 +44,7 @@ allSheetNames.forEach(function(sheetname){
             fields[sheet.header[i]] = v;
         });
         obj.ids = ids;
-        obj.fields = fields;
+        obj.fields = _.omit(fields, 'patientID');
         obj.value = sheet.data.map(d=>{
             var arr = [];
             console.log(d);
@@ -47,16 +53,11 @@ allSheetNames.forEach(function(sheetname){
                 if(colTypes[i] === 'n'){
                     arr.push(parseFloat(d[i]));
                 } else {
-                    if(d[i] === 'undefined'){
-                        console.log('***');
-                        console.log(d);
-                    }
                     arr.push(fields[sheet.header[i]].indexOf(d[i]));
                 }
             }); 
             return arr;
         });
-
     } else if (sheet.type === 'SAMPLE') {
 
     } else if (sheet.type === 'GENESETS') {
@@ -70,30 +71,3 @@ allSheetNames.forEach(function(sheetname){
 
 //
 
-var XlsxTemplate = require('excel-template');
-var template;
-fs.readFile(path.join('', 'templates', 'demo.xlsx'), function(err, data) {
-    // Create a template
-    template = new XlsxTemplate(data);
-
-    var sheetNumber = 1;
-
-    // Set up some placeholder values matching the placeholders in the template
-    var values = {
-            extractDate: new Date(),
-            dates: [ new Date("2013-06-01"), new Date("2013-06-02"), new Date("2013-06-03") ],
-            people: [
-                {name: "John Smith", age: 20},
-                {name: "Bob Johnson", age: 22}
-            ]
-        };
-
-    // Perform substitution
-    template.substitute(sheetNumber, values);
-
-    // Get binary data
-    var data = template.generate();
-
-    // ...
-
-});
