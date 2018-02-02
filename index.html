@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <script src="http://code.jquery.com/jquery-2.1.3.min.js"></script>
+        <script src="https://code.jquery.com/ui/1.12.0-rc.2/jquery-ui.min.js" integrity="sha256-55Jz3pBCF8z9jBO1qQ7cIf0L+neuPTD1u7Ytzrp2dqo=" crossorigin="anonymous"></script>
+        <script type="text/javascript" src="/dist/shim.min.js"></script>
+        <script type="text/javascript" src="/dist/xlsx.full.min.js"></script>
+        <title>
+            Test parsing excel in browser.
+        </title>
+    </head>
+    <body>
+        <h1>Test parsing excel in browser.</h1>
+        <input type='file' id='input_dom_element'></input>
+        <script>
+            var rABS = true; // true: readAsBinaryString ; false: readAsArrayBuffer
+            var workbook;
+            function handleFile(e) {
+                var files = e.target.files, f = files[0];
+                console.log(files);
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var data = e.target.result;
+                    console.log("****", data.length);
+                    if(!rABS) data = new Uint8Array(data);
+                    workbook = XLSX.read(data, {type: rABS ? 'binary' : 'array'});
+                    console.log(Object.keys(workbook));
+                
+                    /* DO SOMETHING WITH workbook HERE */
+                };
+                if(rABS) reader.readAsBinaryString(f); else reader.readAsArrayBuffer(f);
+            }
+            input_dom_element.addEventListener('change', handleFile, false);
+        </script>
+    </body>
+</html>
