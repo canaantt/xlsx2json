@@ -108,8 +108,8 @@ var xlsx2json = function(workbook){
                 var arr = [];
                 arr[0] = d[0];
                 arr[1] = uniqueTypes.indexOf(d[typeLocation]);
-                arr[2] = d[startDateLocation];
-                arr[3] = d[endDateLocation];
+                arr[2] = parseInt(d[startDateLocation]);
+                arr[3] = parseInt(d[endDateLocation]);
                 var o = {};
                 customHeaders.forEach(h=>{
                     o[h] = d[sheet.header.indexOf(h)];
@@ -162,3 +162,13 @@ var xlsx2json = function(workbook){
 };
 
 
+// experimenting streaming 
+var filestream = getExcel().createReadStream(); // a readable stream
+var buffers = [];
+file.on('data', function(data) {
+    buffers.push(data);
+});
+file.on('end', function() {
+    var buffer = Buffer.concat(buffers);
+    var workbook = XLSX.read(buffer); // works
+});
