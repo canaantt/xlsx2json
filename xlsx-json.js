@@ -6,6 +6,9 @@ const fs = require('fs');
 var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
 
 var xlsx2json = function(workbook){
+    var result = {};
+    result['EVENT'] = [];
+    result['MATRIX'] = [];
     var allSheetNames =  Object.keys(workbook.Sheets);
     allSheetNames.forEach(function(sheetName){
         var sheet = {
@@ -63,7 +66,8 @@ var xlsx2json = function(workbook){
                 }); 
                 return arr;
             });
-            console.log(obj);
+            result['PATIENT'] = obj;
+            // console.log(obj);
             // jsonfile.writeFile('demo-patient.json', obj, function (err) {
             //     console.error(err)
             //   });
@@ -79,14 +83,16 @@ var xlsx2json = function(workbook){
                 patientSampleMapping[k] = data.filter(d=>d[patientIDLocation]===k)
                                             .map(d=>d[sampleIDLocation]);
             });
-            console.log(patientSampleMapping);
+            result['SAMPLE'] = data;
+            result['PSMAP'] = patientSampleMapping;
+            // console.log(patientSampleMapping);
             // jsonfile.writeFile('demo-sample.json', data, function (err) {
             //     console.error(err)
             //   });
             // jsonfile.writeFile('demo-psmap.json', patientSampleMapping, function (err) {
             //     console.error(err)
             //   });
-        } else if (sheet.type === 'PATIENTEVENT') {
+        } else if (sheet.type === 'EVENT') {
             sheet.header = data[0];
             data.splice(0, 1);
             var obj = {};
@@ -119,7 +125,8 @@ var xlsx2json = function(workbook){
             });
             obj.map = map;
             obj.value = value;
-            console.log(obj);
+            result['EVENT'].push(obj);
+            // console.log(obj);
             // jsonfile.writeFile('demo-events.json', obj, function (err) {
             //     console.error(err)
             //   });
@@ -132,12 +139,12 @@ var xlsx2json = function(workbook){
                     genesets[k] = _.uniq(d);
                 }
             });
-            console.log(genesets);
+            result['GENESETS'] = genesets;
+            // console.log(genesets);
             // jsonfile.writeFile('demo-genesets.json', genesets, function (err) {
             //     console.error(err)
             //   });
         } else if (sheet.type === 'MUTATIONS') {
-
         } else if (sheet.type === 'MATRIX') {
             var obj = {};
             sheet.tableType = data[0][1];
@@ -153,12 +160,14 @@ var xlsx2json = function(workbook){
             obj.ids = ids;
             obj.genes = genes;
             obj.values = values;
-            console.log(obj);
+            result['MATRIX'].push(obj);
+            // console.log(obj);
             // jsonfile.writeFile('demo-'+sheet.tableType+'.json', obj, function (err) {
             //     console.error(err)
             //   });
         }
     });
+    return result;
 };
 
 
