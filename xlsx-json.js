@@ -11,7 +11,6 @@ var xlsx2json = function(workbook){
     allSheetNames.forEach(function(sheetName){
         var sheet = {
             type : sheetName.split('-')[0].toUpperCase(),
-            data : null,
             header: null
         };
         var data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], 
@@ -162,7 +161,28 @@ var xlsx2json = function(workbook){
             // jsonfile.writeFile('demo-genesets.json', genesets, function (err) {
             //     console.error(err)
             //   });
-        } else if (sheet.type === 'MUTATIONS') {
+        } else if (sheet.type === 'MUTATION') {
+            var obj = {};
+            var res = {};
+            sheet.tableType = data[0][1];
+            sheet.tableName = data[1][1];
+            sheet.header = data[2];
+            data.splice(0, 3);
+            var ids = _.uniq(data.map(d=>d[1]));
+            var genes = _.uniq(data.map(d=>d[0]));
+            var mutTypes = _.uniq(data.map(d=>d[2]));
+            var values = data.map((d)=>{
+                return(ids.indexOf(d[1]) + '-' +
+                       genes.indexOf(d[0]) + '-' +
+                       mutTypes.indexOf(d[2]));
+            });
+            res.ids = ids;
+            res.genes = genes;
+            res.values = values;
+            obj.res = res;
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            result.push(obj);
         } else if (sheet.type === 'MATRIX') {
             var obj = {};
             var res = {};
