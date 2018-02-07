@@ -142,10 +142,39 @@ exports.preUploading_allSheets_checking = {
         return obj;
     },
     patientID_overlapping: function(jsonResult) {
+        var evaluation = {};
         var pt_list = Object.keys(jsonResult.find(r=>r.type === 'PSMAP').res);
+        var pt_related_sheets = jsonResult.filter(r=>['PATIENT', 'EVENT'].indexOf(r.type) > -1);
+        pt_related_sheets.forEach(sheet=>{
+            switch (sheet.type){
+                case 'PATIENT':
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, pt_list);
+                    break;  
+                case 'EVENT':
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.value.map(v=>v[0]), pt_list);
+                    break;  
+            }
+        });
+        return evaluation;
     },
-    sampleID_overlapping: function() {
+    sampleID_overlapping: function(jsonResult) {
+        var evaluation = {};
         var sample_list = _.values(jsonResult.find(r=>r.type === 'PSMAP').res).reduce((a, b) => a = a.concat(b));
+        var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUTATION', 'SAMPLE'].indexOf(r.type) > -1);
+        sample_related_sheets.forEach(sheet=>{
+            switch(sheet.type){
+                case 'MATRIX':
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
+                    break;
+                case 'MUTATION':
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
+                    break;
+                case 'SAMPLE':
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.map(r=>r[0]), sample_list);
+                    break;
+            }
+        });
+        return evaluation;
     },
     geneIDs_overlapping: function(jsonResult) {
         var evaluation = {};

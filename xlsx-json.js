@@ -24,7 +24,7 @@ var xlsx2json = function(workbook){
             var res = {};
             var ids = sheet.data.map(d=>d[0]);
             var fields = {};
-            var loc = Object.keys(workbook.Sheets.PATIENT).filter(k=>k[1]=='1'&& k.length==2);
+            var loc = Object.keys(workbook.Sheets[Object.keys(workbook.Sheets).find(k=>k.toUpperCase() === 'PATIENT')]).filter(k=>k[1]=='1'&& k.length==2);
             var colTypes = loc.map(c=>{
                 var row = 2;
                 while (workbook.Sheets.PATIENT[c[0]+row].t === 'z') {
@@ -191,7 +191,7 @@ var xlsx2json = function(workbook){
     });
     return result;
 };
-
+var jsonResult = xlsx2json(workbook);
 
 // experimenting streaming 
 var filestream = getExcel().createReadStream(); // a readable stream
