@@ -6,9 +6,7 @@ const fs = require('fs');
 var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
 
 var xlsx2json = function(workbook){
-    var result = {};
-    result['EVENT'] = [];
-    result['MATRIX'] = [];
+    var result = [];
     var allSheetNames =  Object.keys(workbook.Sheets);
     allSheetNames.forEach(function(sheetName){
         var sheet = {
@@ -23,6 +21,7 @@ var xlsx2json = function(workbook){
             data.splice(0, 1);
             sheet.data = data;
             var obj = {};
+            var res = {};
             var ids = sheet.data.map(d=>d[0]);
             var fields = {};
             var loc = Object.keys(workbook.Sheets.PATIENT).filter(k=>k[1]=='1'&& k.length==2);
@@ -49,9 +48,9 @@ var xlsx2json = function(workbook){
                 }
                 fields[sheet.header[i]] = v;
             });
-            obj.ids = ids;
-            obj.fields = _.omit(fields, 'patientID');
-            obj.value = sheet.data.map(d=>{
+            res.ids = ids;
+            res.fields = _.omit(fields, 'patientID');
+            res.value = sheet.data.map(d=>{
                 var arr = [];
                 d.forEach(function(v, i){
                     if(colTypes[i] === 'n'){
@@ -66,7 +65,10 @@ var xlsx2json = function(workbook){
                 }); 
                 return arr;
             });
-            result['PATIENT'] = obj;
+            obj.res = res;
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            result.push(obj);
             // console.log(obj);
             // jsonfile.writeFile('demo-patient.json', obj, function (err) {
             //     console.error(err)
@@ -83,8 +85,16 @@ var xlsx2json = function(workbook){
                 patientSampleMapping[k] = data.filter(d=>d[patientIDLocation]===k)
                                             .map(d=>d[sampleIDLocation]);
             });
-            result['SAMPLE'] = data;
-            result['PSMAP'] = patientSampleMapping;
+            var obj = {};
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            obj.res = data;
+            result.push(obj);
+            var obj = {};
+            obj.type = 'PSMAP';
+            obj.name = sheetName;
+            obj.res = patientSampleMapping;
+            result.push(obj);
             // console.log(patientSampleMapping);
             // jsonfile.writeFile('demo-sample.json', data, function (err) {
             //     console.error(err)
@@ -96,6 +106,7 @@ var xlsx2json = function(workbook){
             sheet.header = data[0];
             data.splice(0, 1);
             var obj = {};
+            var res = {};
             var map = {};
             var headerUpperCase = sheet.header.map(n=>n.toUpperCase());
             var patientIDLocation = headerUpperCase.indexOf('PATIENTID');
@@ -123,9 +134,12 @@ var xlsx2json = function(workbook){
                 arr[4] = o;
                 return arr;
             });
-            obj.map = map;
-            obj.value = value;
-            result['EVENT'].push(obj);
+            res.map = map;
+            res.value = value;
+            obj.res = res;
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            result.push(obj);
             // console.log(obj);
             // jsonfile.writeFile('demo-events.json', obj, function (err) {
             //     console.error(err)
@@ -139,7 +153,11 @@ var xlsx2json = function(workbook){
                     genesets[k] = _.uniq(d);
                 }
             });
-            result['GENESETS'] = genesets;
+            var obj = {};
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            obj.res = genesets;
+            result.push(obj);
             // console.log(genesets);
             // jsonfile.writeFile('demo-genesets.json', genesets, function (err) {
             //     console.error(err)
@@ -147,6 +165,7 @@ var xlsx2json = function(workbook){
         } else if (sheet.type === 'MUTATIONS') {
         } else if (sheet.type === 'MATRIX') {
             var obj = {};
+            var res = {};
             sheet.tableType = data[0][1];
             sheet.tableName = data[1][1];
             data[2].splice(0, 1);
@@ -157,10 +176,13 @@ var xlsx2json = function(workbook){
                 d.splice(0, 1);
                 return d.map(dd=>parseFloat(dd))
             });
-            obj.ids = ids;
-            obj.genes = genes;
-            obj.values = values;
-            result['MATRIX'].push(obj);
+            res.ids = ids;
+            res.genes = genes;
+            res.values = values;
+            obj.res = res;
+            obj.type = sheet.type;
+            obj.name = sheetName;
+            result.push(obj);
             // console.log(obj);
             // jsonfile.writeFile('demo-'+sheet.tableType+'.json', obj, function (err) {
             //     console.error(err)

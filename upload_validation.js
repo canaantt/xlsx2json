@@ -2,7 +2,41 @@
    output: a reporting JSON object
 */
 
+// region GENE_MAP
+// const mongoose = require("mongoose");
+// const jsonfile = require("jsonfile-promised");
+// mongoose.connect(
+//     'mongodb://oncoscape-dev-db1.sttrcancer.io:27017,oncoscape-dev-db2.sttrcancer.io:27017,oncoscape-dev-db3.sttrcancer.io:27017/v2?authSource=admin', {
+//     db: {
+//         native_parser: true
+//     },
+//     server: {
+//         poolSize: 5,
+//         reconnectTries: Number.MAX_VALUE
+//     },
+//     replset: {
+//         rs_name: 'rs0'
+//     },
+//     user: process.env.MONGO_USERNAME,
+//     pass: process.env.MONGO_PASSWORD
+// });
+// var connection = mongoose.connection;
+// var gene_map;
+// connection.once('open', function(){
+//     var db = connection.db; 
+//     db.collection('z_lookup_genemap').find().toArray(function(err, data){
+//         if(err) console.log(err);
+//         gene_map = data;
+//         jsonfile.writeFile('gene_map.json', gene_map, function (err) {
+//             console.error(err);
+//         });
+//     });
+// });
+// regionend
+
 var exports = module.exports = {};
+const _ = require('underscore');
+var gene_mapping = require('./gene_map.json');
 var helpingFunctionFactory = {
     get_headers: function(sheet, headerLineNum){
         var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum&& k.length==2);
@@ -37,27 +71,27 @@ var requirements = {
     },
     'SAMPLE':{
         'required_fields':['SAMPLEID', 'PATIENTID'],
-        'unique_fields':['PATIENTID'],
+        'unique_fields':['SAMPLEID'],
         'required': true
     },
     'EVENT':{
-        'required_fields':['PATIENTID'],
+        'required_fields':['PATIENTID', 'CATEGORY', 'TYPE', 'STARTDATE', 'ENDDATE'],
         'unique_fields':['PATIENTID'],
         'required': false
     },
     'GENESETS':{
-        'required_fields':['PATIENTID'],
-        'unique_fields':['PATIENTID'],
+        'required_fields': null,
+        'unique_fields': null,
         'required': false
     },
     'MUTATIONS':{
-        'required_fields':['PATIENTID'],
-        'unique_fields':['PATIENTID'],
+        'required_fields': null,
+        'unique_fields': null,
         'required': false
     },
     'MATRIX':{
-        'required_fields':['PATIENTID'],
-        'unique_fields':['PATIENTID'],
+        'required_fields': null,
+        'unique_fields': null,
         'required': false
     }
 };
@@ -67,9 +101,9 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
         allSheetNames.forEach(function(sheetName){
             var type = sheetName.split('-')[0].toUpperCase();
             if(type === 'PATIENT') {
-                var header = helpingFunctionFactory.get_headers(wb.Sheets[sheetName]);
-                var requiredFields = ['PATIENTID'];
-                helpingFunctionFactory.field_existence(header,['PATIENTID']);
+                var header = helpingFunctionFactory.get_headers(wb.Sheets[sheetName], 1);
+                var requiredFields = requirements['PATIENTID'];
+                helpingFunctionFactory.field_existence(header, requiredFields);
                 helpingFunctionFactory.check_uniqueness();
             } else if (type === 'SAMPLE') {
 
@@ -86,7 +120,7 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
 };
 
 exports.preUploading_allSheets_checking = {
-    allSheets_existance = function(wb) {
+    allSheets_existance: function(wb) {
         var obj = {};
         var required_sheetTypes = ['PATIENT', 'SAMPLE'];
         var permissible_sheetTypes = ['EVENT', 'GENESETS', 'MATRIX', 'MUTATION'];
@@ -107,12 +141,36 @@ exports.preUploading_allSheets_checking = {
         });
         return obj;
     },
-    patientID_overlapping = function(jsonResult) {
-        
-        Object.keys(jsonFromXlsx.PSMAP).length;
+    patientID_overlapping: function(jsonResult) {
+        var pt_list = Object.keys(jsonResult.find(r=>r.type === 'PSMAP').res);
     },
-    sampleID_overlapping = function() {},
-    geneIDs_overlapping = function() {}
+    sampleID_overlapping: function() {
+        var sample_list = _.values(jsonResult.find(r=>r.type === 'PSMAP').res).reduce((a, b) => a = a.concat(b));
+    },
+    geneIDs_overlapping: function(jsonResult) {
+        var evaluation = {};
+        var hugo_genes = gene_mapping.map(g=>g.s);
+        var hugo_alias = gene_mapping.map(g=>g.a);
+        // jsonResult.map(r=>Object.keys(r.res));
+        var sheetTypes = jsonResult.map(j=>j.type);
+        if (sheetTypes.indexOf('GENESETS') > -1){
+            var eva = {};
+            var genesets = jsonResult.find(r=>r.type === 'GENESETS').res;
+            Object.keys(genesets).forEach((k)=> {
+                eva[k] = helpingFunctionFactory.overlapping(genesets[k], hugo_genes);
+            });
+            evaluation['GENESETS'] = eva;
+        } 
+        if (sheetTypes.indexOf('MATRIX') > -1) {
+            var eva = {};
+            var matrices = jsonResult.filter(r=>r.type === 'MATRIX');
+            matrices.forEach((mx)=>{
+                eva[mx.name] = helpingFunctionFactory.overlapping(mx.res.genes, hugo_genes);
+            });
+            evaluation['MATRIX'] = eva;
+        } 
+        return evaluation;
+    }
 };
 
 exports.postUploading_file_level_checking = {
