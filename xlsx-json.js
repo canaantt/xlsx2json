@@ -85,7 +85,22 @@ var xlsx2json = function(workbook){
             sheet.header = data[0];
             data.splice(0, 1);
             sheet.data = data;
-
+            // #region Patient-Sample Mapping
+            var sampleIDLocation = sheet.header.map(n=>n.toUpperCase()).indexOf('SAMPLEID');
+            var patientIDLocation = sheet.header.map(n=>n.toUpperCase()).indexOf('PATIENTID');
+            var keys = _.uniq(data.map(d=>d[patientIDLocation]));
+            var patientSampleMapping = {};
+            keys.forEach(k=>{
+                patientSampleMapping[k] = data.filter(d=>d[patientIDLocation]===k)
+                                            .map(d=>d[sampleIDLocation]);
+            });
+            var obj = {};
+            obj.type = 'PSMAP';
+            obj.name = sheetName;
+            obj.res = patientSampleMapping;
+            result.push(obj);
+            // #endregion Patient-Sample Mapping
+            
             // #region Sample Annotation
             var obj = {};
             var res = {};
@@ -152,22 +167,6 @@ var xlsx2json = function(workbook){
             result.push(obj);
             // #endregion Sample Annotation
 
-            // #region Patient-Sample Mapping
-            var sampleIDLocation = sheet.header.map(n=>n.toUpperCase()).indexOf('SAMPLEID');
-            var patientIDLocation = sheet.header.map(n=>n.toUpperCase()).indexOf('PATIENTID');
-            var keys = _.uniq(data.map(d=>d[patientIDLocation]));
-            var patientSampleMapping = {};
-            keys.forEach(k=>{
-                patientSampleMapping[k] = data.filter(d=>d[patientIDLocation]===k)
-                                            .map(d=>d[sampleIDLocation]);
-            });
-            var obj = {};
-            obj.type = 'PSMAP';
-            obj.name = sheetName;
-            obj.res = patientSampleMapping;
-            result.push(obj);
-            // #endregion Patient-Sample Mapping
-            
             // console.log(patientSampleMapping);
             // jsonfile.writeFile('demo-sample.json', data, function (err) {
             //     console.error(err)
