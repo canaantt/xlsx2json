@@ -22,9 +22,9 @@
 // });
 // var connection = mongoose.connection;
 // var gene_map;
-// connection.once('open', function(){
+// connection.once('open', function() {
 //     var db = connection.db; 
-//     db.collection('z_lookup_genemap').find().toArray(function(err, data){
+//     db.collection('z_lookup_genemap').find().toArray(function(err, data) {
 //         if(err) console.log(err);
 //         gene_map = data;
 //         jsonfile.writeFile('gene_map.json', gene_map, function (err) {
@@ -38,13 +38,12 @@ var exports = module.exports = {};
 const _ = require('underscore');
 var gene_mapping = require('./gene_map.json');
 var helpingFunctionFactory = {
-    get_headers: function(sheet, headerLineNum){
+    get_headers: function(sheet, headerLineNum) {
         var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum&& k.length==2);
         return loc.map(l=>sheet[l].v);
     },
-    get_fieldValues: function(sheet, headerLineNum, header){
-        var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum&& k.length==2);
-        var headers = loc.map(l=>sheet[l].v.toUpperCase());
+    get_fieldValues: function(sheet, headerLineNum, header) {
+        var headers = this.get_headers(sheet, headerLineNum);
         var re = /[A-Z]/gi;
         var header_loc = loc[headers.indexOf(header)].match(re)[0];
         var found = Object.keys(sheet).filter(k=>k.match(re)[0] === header_loc);
@@ -52,10 +51,10 @@ var helpingFunctionFactory = {
         value.splice(0, headerLineNum);
         return value;
     },
-    check_uniqueness: function(arr){
+    check_uniqueness: function(arr) {
         return arr.length == new Set(arr).size;
     },
-    field_existence: function(header, requiredFieldArr){
+    field_existence: function(header, requiredFieldArr) {
         var error = {};
         var header2Upper = header.map(h=>h.toUpperCase());
         error['field_existence'] = {
@@ -63,7 +62,7 @@ var helpingFunctionFactory = {
         };
         return error;
     },
-    overlapping: function(array1, refArr){
+    overlapping: function(array1, refArr) {
         var a = new Set(array1);
         var b = new Set(refArr);
         var intersection = new Set([...a].filter(x => b.has(x)));
@@ -72,6 +71,27 @@ var helpingFunctionFactory = {
         var differencePercentage = difference.size/a.size * 100;
         return {'overlapped': intersectionPercentage,
                 'notInRef': differencePercentage};
+    },
+    getAllIndexes: function(arr, val) {
+        var indexes = [], i = -1;
+        while ((i = arr.indexOf(val, i+1)) != -1){
+            indexes.push(i);
+        }
+        return indexes;
+    },
+    Type_Category_inclusion: function(sheet) {
+        var error = {};
+        var subCategoryArr = this.get_fieldValues(sheet, 1, 'TYPE');
+        var categoryArr = this.get_fieldValues(sheet, 1, 'CATEGORY');
+        var err = {};
+        _.uniq(subCategoryArr).forEach(sc=>{
+            var cat =_.uniq(this.getAllIndexes(subCategoryArr, sc).map(ind=>categoryArr[ind]));
+            if( cat.length > 1){
+                err[sc] = cat; 
+            }
+        });
+        error['subCategoryMatchMultipleCategory'] = err;
+        return error;
     }
 };
 
@@ -90,8 +110,9 @@ var requirements = {
     },
     'EVENT':{
         'required_fields':['PATIENTID', 'CATEGORY', 'TYPE', 'STARTDATE', 'ENDDATE'],
-        // 'unique_fields':['PATIENTID'],
         'headerLineNum': 1,
+        'dependencies': ['PATIENT'],
+        'sheet_specific_checking': ['Type_Category_inclusion'],
         'required': false
     },
     'GENESETS':{
@@ -104,12 +125,14 @@ var requirements = {
         'required_fields': null,
         'unique_fields': null,
         'headerLineNum': 3,
+        'dependencies': ['SAMPLE'],
         'required': false
     },
     'MATRIX':{
         'required_fields': null,
         'unique_fields': null,
         'headerLineNum': 3,
+        'dependencies': ['SAMPLE'],
         'required': false
     }
 };
@@ -118,17 +141,17 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
         var error = {};
         var allSheetNames =  workbook.SheetNames;
         var index = 0;
-        allSheetNames.forEach(function(sheetName){
+        allSheetNames.forEach(function(sheetName) {
             console.log(index++);
             var err = {};
             var type = sheetName.split('-')[0].toUpperCase();
             var header = helpingFunctionFactory.get_headers(workbook.Sheets[sheetName], 1);
             var requiredFields = requirements[type]['required_fields'];
-            if (requiredFields !== null){
+            if (requiredFields !== null) {
                 err['required_fields'] = helpingFunctionFactory.field_existence(header, requiredFields);
             } 
             var uniqueFields = requirements[type]['unique_fields'];
-            if (uniqueFields !== null){
+            if (uniqueFields !== null) {
                 var e = {};
                 uniqueFields.forEach(uniqueField=>{
                     var headerLineNum = requirements[type]['headerLineNum'];
@@ -138,9 +161,10 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
                 err['unique_fields'] = e;
             }
             /* Sheet-specific validation 
-            [ ] - Event - types and categories
-            [ ] - 
-            [ ] - 
+            [x] - Event - types and categories
+            [ ] - Event - check the format of 'startDate' and 'endDate': ['timeStamp', 'number']
+            [ ] - MATRIX & MUTATION - check the first three lines
+            [x] - Sheet Dependencies
             */
             error[sheetName] = err;
         });
@@ -167,6 +191,15 @@ exports.preUploading_allSheets_checking = {
                     'sheetNames': sheetNames};
             return o;
         });
+        
+        var error_dependencies = {};
+        Object.keys(requirements).forEach(type=>{
+            
+            if('dependencies' in requirements[type]){
+                error_dependencies[type] = requirements[type]['dependencies'].filter(s=>!sheetsSet.has(s));
+            }
+        });
+        obj['error_dependencies'] = error_dependencies;
         return obj;
     },
     patientID_overlapping: function(jsonResult) {
@@ -174,7 +207,7 @@ exports.preUploading_allSheets_checking = {
         var pt_list = Object.keys(jsonResult.find(r=>r.type === 'PSMAP').res);
         var pt_related_sheets = jsonResult.filter(r=>['PATIENT', 'EVENT'].indexOf(r.type) > -1);
         pt_related_sheets.forEach(sheet=>{
-            switch (sheet.type){
+            switch (sheet.type) {
                 case 'PATIENT':
                     evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, pt_list);
                     break;  
