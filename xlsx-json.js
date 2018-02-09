@@ -3,7 +3,6 @@ const _ = require("underscore");
 const XLSX =require("xlsx");
 const fs = require('fs');
 
-var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
 
 var xlsx2json = function(workbook){
     var result = [];
@@ -284,6 +283,7 @@ var xlsx2json = function(workbook){
     });
     return result;
 };
+var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
 var jsonResult = xlsx2json(workbook);
 
 // experimenting streaming 

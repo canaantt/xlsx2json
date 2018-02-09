@@ -162,6 +162,7 @@ exports.preUploading_allSheets_checking = {
         var sample_list = _.values(jsonResult.find(r=>r.type === 'PSMAP').res).reduce((a, b) => a = a.concat(b));
         var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUTATION', 'SAMPLE'].indexOf(r.type) > -1);
         sample_related_sheets.forEach(sheet=>{
+            console.log(sheet.name);
             switch(sheet.type){
                 case 'MATRIX':
                     evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
@@ -170,7 +171,7 @@ exports.preUploading_allSheets_checking = {
                     evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
                     break;
                 case 'SAMPLE':
-                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.map(r=>r[0]), sample_list);
+                    evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
                     break;
             }
         });
