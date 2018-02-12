@@ -233,7 +233,7 @@ var xlsx2json = function(workbook){
             // jsonfile.writeFile('demo-genesets.json', genesets, function (err) {
             //     console.error(err)
             //   });
-        } else if (sheet.type === 'MUTATION') {
+        } else if (sheet.type === 'MUT') {
             var obj = {};
             var res = {};
             sheet.tableType = data[0][1];
@@ -283,8 +283,8 @@ var xlsx2json = function(workbook){
     });
     return result;
 };
-var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
-var jsonResult = xlsx2json(workbook);
+// var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
+// var jsonResult = xlsx2json(workbook);
 
 // experimenting streaming 
 var filestream = getExcel().createReadStream(); // a readable stream

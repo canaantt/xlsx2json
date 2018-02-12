@@ -121,7 +121,7 @@ var requirements = {
         'headerLineNum': null,
         'required': false
     },
-    'MUTATION':{
+    'MUT':{
         'required_fields': null,
         'unique_fields': null,
         'headerLineNum': 3,
@@ -163,7 +163,7 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
             /* Sheet-specific validation 
             [x] - Event - types and categories
             [ ] - Event - check the format of 'startDate' and 'endDate': ['timeStamp', 'number']
-            [ ] - MATRIX & MUTATION - check the first three lines
+            [ ] - MATRIX & MUT - check the first three lines
             [x] - Sheet Dependencies
             */
             error[sheetName] = err;
@@ -175,7 +175,7 @@ exports.preUploading_allSheets_checking = {
     allSheets_existance: function(wb) {
         var obj = {};
         var required_sheetTypes = ['PATIENT', 'SAMPLE'];
-        var permissible_sheetTypes = ['EVENT', 'GENESETS', 'MATRIX', 'MUTATION'];
+        var permissible_sheetTypes = ['EVENT', 'GENESETS', 'MATRIX', 'MUT'];
         var sheetsSet = new Set(wb.SheetNames.map(n=>n.split('-')[0].toUpperCase()));
         obj['required_sheets'] = required_sheetTypes.map(s=>{
             var o = {};
@@ -221,7 +221,7 @@ exports.preUploading_allSheets_checking = {
     sampleID_overlapping: function(jsonResult) {
         var evaluation = {};
         var sample_list = _.values(jsonResult.find(r=>r.type === 'PSMAP').res).reduce((a, b) => a = a.concat(b));
-        var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUTATION', 'SAMPLE'].indexOf(r.type) > -1);
+        var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUT', 'SAMPLE'].indexOf(r.type) > -1);
         sample_related_sheets.forEach(sheet=>{
             evaluation[sheet.name] = helpingFunctionFactory.overlapping(sheet.res.ids, sample_list);
         });
@@ -232,7 +232,7 @@ exports.preUploading_allSheets_checking = {
         var hugo_genes = gene_mapping.map(g=>g.s);
         var hugo_alias = gene_mapping.map(g=>g.a);
         // jsonResult.map(r=>Object.keys(r.res));
-        var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUTATION', 'GENESETS'].indexOf(r.type) > -1);
+        var sample_related_sheets = jsonResult.filter(r=>['MATRIX', 'MUT', 'GENESETS'].indexOf(r.type) > -1);
         sample_related_sheets.forEach(sheet=>{
             if(sheet.type === 'GENESETS') {
                 var eva = {};
