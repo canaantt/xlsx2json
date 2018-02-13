@@ -39,11 +39,12 @@ const _ = require('underscore');
 var gene_mapping = require('./gene_map.json');
 var helpingFunctionFactory = {
     get_headers: function(sheet, headerLineNum) {
-        var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum&& k.length==2);
+        var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum && k.length==2 && sheet[k].t !== 'z');
         return loc.map(l=>sheet[l].v);
     },
     get_fieldValues: function(sheet, headerLineNum, header) {
-        var headers = this.get_headers(sheet, headerLineNum);
+        var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum && k.length==2);
+        var headers = loc.map(l=>sheet[l].v.toUpperCase());
         var re = /[A-Z]/gi;
         var header_loc = loc[headers.indexOf(header)].match(re)[0];
         var found = Object.keys(sheet).filter(k=>k.match(re)[0] === header_loc);
@@ -116,21 +117,15 @@ var requirements = {
         'required': false
     },
     'GENESETS':{
-        'required_fields': null,
-        'unique_fields': null,
         'headerLineNum': null,
         'required': false
     },
     'MUT':{
-        'required_fields': null,
-        'unique_fields': null,
         'headerLineNum': 3,
         'dependencies': ['SAMPLE'],
         'required': false
     },
     'MATRIX':{
-        'required_fields': null,
-        'unique_fields': null,
         'headerLineNum': 3,
         'dependencies': ['SAMPLE'],
         'required': false
@@ -142,16 +137,15 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
         var allSheetNames =  workbook.SheetNames;
         var index = 0;
         allSheetNames.forEach(function(sheetName) {
-            console.log(index++);
             var err = {};
             var type = sheetName.split('-')[0].toUpperCase();
-            var header = helpingFunctionFactory.get_headers(workbook.Sheets[sheetName], 1);
-            var requiredFields = requirements[type]['required_fields'];
-            if (requiredFields !== null) {
+            if('required_fields' in requirements[type]){
+                var header = helpingFunctionFactory.get_headers(workbook.Sheets[sheetName], 1);
+                var requiredFields = requirements[type]['required_fields'];
                 err['required_fields'] = helpingFunctionFactory.field_existence(header, requiredFields);
-            } 
-            var uniqueFields = requirements[type]['unique_fields'];
-            if (uniqueFields !== null) {
+            }
+            if('unique_fields' in requirements[type]){
+                var uniqueFields = requirements[type]['unique_fields']; 
                 var e = {};
                 uniqueFields.forEach(uniqueField=>{
                     var headerLineNum = requirements[type]['headerLineNum'];
@@ -159,7 +153,7 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
                     e[uniqueField] = helpingFunctionFactory.check_uniqueness(unique_field_values);
                 });
                 err['unique_fields'] = e;
-            }
+            }    
             /* Sheet-specific validation 
             [x] - Event - types and categories
             [ ] - Event - check the format of 'startDate' and 'endDate': ['timeStamp', 'number']

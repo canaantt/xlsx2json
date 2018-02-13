@@ -283,8 +283,8 @@ var xlsx2json = function(workbook){
     });
     return result;
 };
-// var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
-// var jsonResult = xlsx2json(workbook);
+var workbook = XLSX.readFile("demo.xlsx", {sheetStubs: true});
+var jsonResult = xlsx2json(workbook);
 
 // experimenting streaming 
 var filestream = getExcel().createReadStream(); // a readable stream
