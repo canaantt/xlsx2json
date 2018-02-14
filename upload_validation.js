@@ -155,7 +155,34 @@ var requirements = {
     }
 };
 
-exports.preUploading_sheetLevel_checking = function(workbook) {
+exports.preUploading_sheetLevel_checking = function(sheet) {
+    var err = {};
+    var type = sheetName.split('-')[0].toUpperCase();
+    if('required_fields' in requirements[type]) {
+        var header = helpingFunctionFactory.get_headers(sheet, 1);
+        var requiredFields = requirements[type]['required_fields'];
+        err['required_fields'] = helpingFunctionFactory.field_existence(header, requiredFields);
+    }
+    if('unique_fields' in requirements[type]) {
+        var uniqueFields = requirements[type]['unique_fields']; 
+        var e = {};
+        uniqueFields.forEach(uniqueField=>{
+            var headerLineNum = requirements[type]['headerLineNum'];
+            var unique_field_values = helpingFunctionFactory.get_fieldValues(sheet, headerLineNum, uniqueField);
+            e[uniqueField] = helpingFunctionFactory.check_uniqueness(unique_field_values);
+        });
+        err['unique_fields'] = e;
+    } 
+    if('sheet_specific_checking' in requirements[type]) {
+        var e = {};
+        requirements[type]['sheet_specific_checking'].forEach(functionName=>{
+            e[functionName] = helpingFunctionFactory[functionName](sheet);
+        });
+        err['sheet_specific_checking'] = e;
+    }
+    return err;
+}
+exports.preUploading_sheetLevelAllworkbook_checking = function(workbook) {
         var error = {};
         var allSheetNames =  workbook.SheetNames;
         var index = 0;
@@ -186,7 +213,6 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
                 err['sheet_specific_checking'] = e;
             }
             /* Sheet-specific validation 
-            [x] - Event - types and categories
             [ ] - Event - check the format of 'startDate' and 'endDate': ['timeStamp', 'number']
             [ ] - MATRIX & MUT - check the first three lines
             [x] - Sheet Dependencies
