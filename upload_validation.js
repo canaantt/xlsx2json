@@ -129,35 +129,29 @@ var requirements = {
     'PATIENT':{
         'required_fields':['PATIENTID'],
         'unique_fields':['PATIENTID'],
-        'headerLineNum': 1,
-        'required': true
+        'headerLineNum': 1
     },
     'SAMPLE':{
         'required_fields':['SAMPLEID', 'PATIENTID'],
         'unique_fields':['SAMPLEID'],
-        'headerLineNum': 1,
-        'required': true
+        'headerLineNum': 1
     },
     'EVENT':{
         'required_fields':['PATIENTID', 'CATEGORY', 'TYPE', 'STARTDATE', 'ENDDATE'],
         'headerLineNum': 1,
         'dependencies': ['PATIENT'],
-        'sheet_specific_checking': ['Type_Category_inclusion'],
-        'required': false
+        'sheet_specific_checking': ['Type_Category_inclusion']
     },
     'GENESETS':{
-        'headerLineNum': null,
-        'required': false
+        'headerLineNum': null
     },
     'MUT':{
         'headerLineNum': 3,
-        'dependencies': ['SAMPLE'],
-        'required': false
+        'dependencies': ['SAMPLE']
     },
     'MATRIX':{
         'headerLineNum': 3,
-        'dependencies': ['SAMPLE'],
-        'required': false
+        'dependencies': ['SAMPLE']
     }
 };
 
@@ -166,6 +160,7 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
         var allSheetNames =  workbook.SheetNames;
         var index = 0;
         allSheetNames.forEach(function(sheetName) {
+            console.log(sheetName);
             var err = {};
             var type = sheetName.split('-')[0].toUpperCase();
             if('required_fields' in requirements[type]){
@@ -182,7 +177,14 @@ exports.preUploading_sheetLevel_checking = function(workbook) {
                     e[uniqueField] = helpingFunctionFactory.check_uniqueness(unique_field_values);
                 });
                 err['unique_fields'] = e;
-            }    
+            } 
+            if('sheet_specific_checking' in requirements[type]){
+                var e = {};
+                requirements[type]['sheet_specific_checking'].forEach(functionName=>{
+                    e[functionName] = helpingFunctionFactory[functionName](workbook.Sheets[sheetName]);
+                });
+                err['sheet_specific_checking'] = e;
+            }
             /* Sheet-specific validation 
             [x] - Event - types and categories
             [ ] - Event - check the format of 'startDate' and 'endDate': ['timeStamp', 'number']
