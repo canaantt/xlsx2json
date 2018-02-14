@@ -191,6 +191,9 @@ var s3Factory = {
     }
 }
 // #endregion
+exports.readXLSX = function(xlsxFile) {
+    return XLSX.readFile("demo.xlsx", {sheetStubs: true});
+};
 
 exports.preUploading_sheetLevel_checking = function(sheet) {
     var err = {};
@@ -218,7 +221,8 @@ exports.preUploading_sheetLevel_checking = function(sheet) {
         err['sheet_specific_checking'] = e;
     }
     return err;
-}
+};
+
 exports.preUploading_sheetLevelAllworkbook_checking = function(workbook) {
         var error = {};
         var allSheetNames =  workbook.SheetNames;
