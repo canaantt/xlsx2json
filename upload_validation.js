@@ -191,6 +191,7 @@ var s3Factory = {
     }
 }
 // #endregion
+
 exports.readXLSX = function(xlsxFile) {
     return XLSX.readFile("demo.xlsx", {sheetStubs: true});
 };
@@ -261,6 +262,110 @@ exports.preUploading_sheetLevelAllworkbook_checking = function(workbook) {
             error[sheetName] = err;
         });
         return error;
+};
+
+exports.preUploading_allSheets_checking = {
+    allSheets_existance: function(workbook) {
+        var obj = {};
+        var required_sheetTypes = ['PATIENT', 'SAMPLE'];
+        var permissible_sheetTypes = ['EVENT', 'GENESETS', 'MATRIX', 'MUT'];
+        var sheetsSet = new Set(workbook.SheetNames.map(n=>n.split('-')[0].toUpperCase()));
+        obj['required_sheets'] = required_sheetTypes.map(s=>{
+            var o = {};
+            var sheetNames = workbook.SheetNames.filter(n=>n.toUpperCase().indexOf(s)>-1);
+            o[s] = {'exists': sheetsSet.has(s),
+                    'sheetNames': sheetNames};
+            return o;
+        });
+        obj['permissible_sheets'] = permissible_sheetTypes.map(s=> {
+            var o = {};
+            var sheetNames = workbook.SheetNames.filter(n=>n.toUpperCase().indexOf(s)>-1);
+            o[s] = {'exists': sheetsSet.has(s),
+                    'sheetNames': sheetNames};
+            return o;
+        });
+        
+        var error_dependencies = {};
+        Object.keys(requirements).forEach(type=>{
+            
+            if('dependencies' in requirements[type]){
+                error_dependencies[type] = requirements[type]['dependencies'].filter(s=>!sheetsSet.has(s));
+            }
+        });
+        obj['error_dependencies'] = error_dependencies;
+        return obj;
+    },
+    patientID_overlapping: function(workbook) {
+        var evaluation = {};
+        var headerLineNum = requirements['PATIENT']['headerLineNum'];
+        var uniqueField = 'PATIENTID';
+        var pt_list = helpingFunctionFactory.get_fieldValues(workbook.Sheets['PATIENT'], headerLineNum, uniqueField);
+        
+        var pt_related_sheets = workbook.SheetNames.filter(sn=>['SAMPLE', 'EVENT'].indexOf(sn.split('-')[0]) > -1);
+        pt_related_sheets.forEach(sheetName=>{
+            var sheet_type = sheetName.split('-')[0];
+            var headerLineNumber = requirements[sheet_type]['headerLineNum'];
+            var uniqueField = 'PATIENTID';
+            var pts = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], headerLineNumber, uniqueField);
+            evaluation[sheetName] = helpingFunctionFactory.overlapping(pts, pt_list);    
+        });
+        return evaluation;
+    },
+    sampleID_overlapping: function(workbook) {
+        var evaluation = {};
+        var headerLineNum = requirements['SAMPLE']['headerLineNum'];
+        var uniqueField = 'SAMPLEID';
+        var sample_list = helpingFunctionFactory.get_fieldValues(workbook.Sheets['SAMPLE'], headerLineNum, uniqueField);
+        var sample_related_sheets = workbook.SheetNames.filter(sn=>['MATRIX', 'MUT'].indexOf(sn.split('-')[0]) > -1);
+        sample_related_sheets.forEach(sheetName=>{
+            console.log(sheetName);
+            var sheet_type = sheetName.split('-')[0];
+            switch (sheet_type) {
+                case 'MATRIX':
+                    var samples = helpingFunctionFactory.get_rowValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum']);
+                    evaluation[sheetName] = helpingFunctionFactory.overlapping(samples, sample_list);
+                    break;  
+                case 'MUT':
+                    var headerLineNumber = requirements[sheet_type]['headerLineNum'];
+                    var samples = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'SAMPLEID');
+                    evaluation[sheetName] = helpingFunctionFactory.overlapping(samples, sample_list);
+                    break;  
+            }
+        });
+        return evaluation;
+    },
+    geneIDs_overlapping: function(workbook) {
+        var evaluation = {};
+        var hugo_genes = gene_mapping.map(g=>g.s);
+        var hugo_alias = gene_mapping.map(g=>g.a);
+        var hugo = hugo_genes.concat(hugo_alias);
+        var gene_related_sheets = workbook.SheetNames.filter(sn=>['MATRIX', 'MUT', 'GENESETS'].indexOf(sn.split('-')[0]) > -1);
+        gene_related_sheets.forEach(sheetName=>{
+            var sheet_type = sheetName.split('-')[0];
+            switch (sheet_type) {
+                case 'MATRIX':
+                    var genes = helpingFunctionFactory.get_colValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'A');
+                    evaluation[sheetName] = helpingFunctionFactory.overlapping(genes, hugo);
+                    break;  
+                case 'MUT':
+                    var genes = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'GENES');
+                    evaluation[sheetName] = helpingFunctionFactory.overlapping(genes, hugo);
+                    break; 
+                case 'GENESETS':
+                    var obj = {};
+                    var geneSetNames = helpingFunctionFactory.get_geneSetNames(workbook.Sheets[sheetName]);
+                    geneSetNames.forEach(geneSet=>{
+                        var rowValues = helpingFunctionFactory.get_rowValues(workbook.Sheets[sheetName], geneSetNames.indexOf(geneSet)+1);
+                        rowValues.splice(0, 1);
+                        var genes = rowValues;
+                        obj[geneSet] = helpingFunctionFactory.overlapping(genes, hugo);
+                    });
+                    evaluation[sheetName] = obj;
+                    break; 
+            }
+        });
+        return evaluation;
+    }
 };
 
 exports.xlsx2json = function(workbook) {
@@ -580,110 +685,6 @@ exports.json2S3 = function(jsonResult){
     var manifest_filename = msg.projectID + '_manifest_json.gz';
     s3Factory.gzip_upload2S3_private(manifest, manifest_filename);       
     return s3Factory.signURL(manifest_filename);
-};
-
-exports.preUploading_allSheets_checking = {
-    allSheets_existance: function(workbook) {
-        var obj = {};
-        var required_sheetTypes = ['PATIENT', 'SAMPLE'];
-        var permissible_sheetTypes = ['EVENT', 'GENESETS', 'MATRIX', 'MUT'];
-        var sheetsSet = new Set(workbook.SheetNames.map(n=>n.split('-')[0].toUpperCase()));
-        obj['required_sheets'] = required_sheetTypes.map(s=>{
-            var o = {};
-            var sheetNames = workbook.SheetNames.filter(n=>n.toUpperCase().indexOf(s)>-1);
-            o[s] = {'exists': sheetsSet.has(s),
-                    'sheetNames': sheetNames};
-            return o;
-        });
-        obj['permissible_sheets'] = permissible_sheetTypes.map(s=> {
-            var o = {};
-            var sheetNames = workbook.SheetNames.filter(n=>n.toUpperCase().indexOf(s)>-1);
-            o[s] = {'exists': sheetsSet.has(s),
-                    'sheetNames': sheetNames};
-            return o;
-        });
-        
-        var error_dependencies = {};
-        Object.keys(requirements).forEach(type=>{
-            
-            if('dependencies' in requirements[type]){
-                error_dependencies[type] = requirements[type]['dependencies'].filter(s=>!sheetsSet.has(s));
-            }
-        });
-        obj['error_dependencies'] = error_dependencies;
-        return obj;
-    },
-    patientID_overlapping: function(workbook) {
-        var evaluation = {};
-        var headerLineNum = requirements['PATIENT']['headerLineNum'];
-        var uniqueField = 'PATIENTID';
-        var pt_list = helpingFunctionFactory.get_fieldValues(workbook.Sheets['PATIENT'], headerLineNum, uniqueField);
-        
-        var pt_related_sheets = workbook.SheetNames.filter(sn=>['SAMPLE', 'EVENT'].indexOf(sn.split('-')[0]) > -1);
-        pt_related_sheets.forEach(sheetName=>{
-            var sheet_type = sheetName.split('-')[0];
-            var headerLineNumber = requirements[sheet_type]['headerLineNum'];
-            var uniqueField = 'PATIENTID';
-            var pts = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], headerLineNumber, uniqueField);
-            evaluation[sheetName] = helpingFunctionFactory.overlapping(pts, pt_list);    
-        });
-        return evaluation;
-    },
-    sampleID_overlapping: function(workbook) {
-        var evaluation = {};
-        var headerLineNum = requirements['SAMPLE']['headerLineNum'];
-        var uniqueField = 'SAMPLEID';
-        var sample_list = helpingFunctionFactory.get_fieldValues(workbook.Sheets['SAMPLE'], headerLineNum, uniqueField);
-        var sample_related_sheets = workbook.SheetNames.filter(sn=>['MATRIX', 'MUT'].indexOf(sn.split('-')[0]) > -1);
-        sample_related_sheets.forEach(sheetName=>{
-            console.log(sheetName);
-            var sheet_type = sheetName.split('-')[0];
-            switch (sheet_type) {
-                case 'MATRIX':
-                    var samples = helpingFunctionFactory.get_rowValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum']);
-                    evaluation[sheetName] = helpingFunctionFactory.overlapping(samples, sample_list);
-                    break;  
-                case 'MUT':
-                    var headerLineNumber = requirements[sheet_type]['headerLineNum'];
-                    var samples = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'SAMPLEID');
-                    evaluation[sheetName] = helpingFunctionFactory.overlapping(samples, sample_list);
-                    break;  
-            }
-        });
-        return evaluation;
-    },
-    geneIDs_overlapping: function(workbook) {
-        var evaluation = {};
-        var hugo_genes = gene_mapping.map(g=>g.s);
-        var hugo_alias = gene_mapping.map(g=>g.a);
-        var hugo = hugo_genes.concat(hugo_alias);
-        var gene_related_sheets = workbook.SheetNames.filter(sn=>['MATRIX', 'MUT', 'GENESETS'].indexOf(sn.split('-')[0]) > -1);
-        gene_related_sheets.forEach(sheetName=>{
-            var sheet_type = sheetName.split('-')[0];
-            switch (sheet_type) {
-                case 'MATRIX':
-                    var genes = helpingFunctionFactory.get_colValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'A');
-                    evaluation[sheetName] = helpingFunctionFactory.overlapping(genes, hugo);
-                    break;  
-                case 'MUT':
-                    var genes = helpingFunctionFactory.get_fieldValues(workbook.Sheets[sheetName], requirements[sheet_type]['headerLineNum'], 'GENES');
-                    evaluation[sheetName] = helpingFunctionFactory.overlapping(genes, hugo);
-                    break; 
-                case 'GENESETS':
-                    var obj = {};
-                    var geneSetNames = helpingFunctionFactory.get_geneSetNames(workbook.Sheets[sheetName]);
-                    geneSetNames.forEach(geneSet=>{
-                        var rowValues = helpingFunctionFactory.get_rowValues(workbook.Sheets[sheetName], geneSetNames.indexOf(geneSet)+1);
-                        rowValues.splice(0, 1);
-                        var genes = rowValues;
-                        obj[geneSet] = helpingFunctionFactory.overlapping(genes, hugo);
-                    });
-                    evaluation[sheetName] = obj;
-                    break; 
-            }
-        });
-        return evaluation;
-    }
 };
 
 exports.postUploading_file_level_checking = {
