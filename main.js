@@ -1,4 +1,4 @@
-var _ = require('underscore');
+var _ = require('lodash');
 var genemap = require('./DatasetGenemap.json');
 var requirements = require('./DatasetRequirements.json');
 var validate = require('./DatasetValidate.js');

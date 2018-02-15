@@ -2,11 +2,11 @@
 (function() {
   var Validator = (function() {
  
-    validateSheet = (sheet, requirements, genemap, underscore) => { 
+    validateSheet = (sheet, requirements, genemap, lodash) => { 
 
     }
 
-    validateWorkbook = (sheets, requirements, genemap, underscore) => { 
+    validateWorkbook = (sheets, requirements, genemap, lodash) => { 
 
     }
     

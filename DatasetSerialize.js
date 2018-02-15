@@ -2,7 +2,7 @@
 (function() {
     var Serializer = (function() {
    
-      serializeSheet = (sheet, underscore) => { 
+      serializeSheet = (sheet, lodash) => { 
   
       }
   
