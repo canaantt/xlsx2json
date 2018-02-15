@@ -9,6 +9,7 @@
   "author": "Jenny Zhang",
   "license": "ISC",
   "dependencies": {
+    "aws-sdk": "^2.195.0",
     "fs": "0.0.1-security",
     "jsonfile": "^4.0.0",
     "jsonfile-promised": "0.0.1",
