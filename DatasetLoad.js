@@ -1,10 +1,10 @@
-const XLSX =require("xlsx");
+// const XLSX =require("xlsx");
 
 // Generic Functions
 (function() {
     var Load = (function() {
    
-      xlsx = (excelFile) => { 
+      xlsx = (excelFile, XLSX) => { 
         const workbook = XLSX.readFile(excelFile, {sheetStubs: true});
         return workbook.SheetNames.map( name => ({ name: name, data: workbook.Sheets[name] }));
       }
