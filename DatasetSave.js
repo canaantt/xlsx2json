@@ -4,7 +4,7 @@
 // Generic Functions
 (function() {
     var s3Factory = {
-      gzip_upload2S3_private: function(JSONOBJ, FILENAME, s3UploadConfig){
+      gzip_upload2S3_private: function(JSONOBJ, FILENAME, s3UploadConfig, s3){
           zlib.gzip(JSON.stringify(JSONOBJ), level=9, function(err, result){
               s3.putObject({Bucket: s3UploadConfig.params.Bucket, 
                         Key: FILENAME, 
@@ -22,7 +22,7 @@
                           });
           });
       },
-      signURL: function(FILENAME){
+      signURL: function(FILENAME, s3){
           var params = { Bucket: 'canaantt-test', 
                         Key: FILENAME, 
                         Expires: 15552000}; // url expires in 180 Days
@@ -35,18 +35,18 @@
       server = (sheetSerialized, projectID, s3UploadConfig, AWS, s3, zlib) => { 
         var result = {};
         var filename = projectID + '_' + sheetSerialized.name + '_' + 'json.gz';
-        s3Factory.gzip_upload2S3_private(sheetSerialized.res, filename, s3UploadConfig);
+        s3Factory.gzip_upload2S3_private(sheetSerialized.res, filename, s3UploadConfig, s3);
         
         result['name'] = sheetSerialized.name;
         result['dataType'] = sheetSerialized.type;
-        result['file'] = s3Factory.signURL(filename);
+        result['file'] = s3Factory.signURL(filename, s3);
         return result; 
       }
       
       s3 = (manifestSerialized, projectID, s3UploadConfig, AWS, s3, zlib) => { 
         var filename = projectID + '_manifest_json.gz';
-        s3Factory.gzip_upload2S3_private(manifestSerialized, filename, s3UploadConfig);
-        return s3Factory.signURL(filename);
+        s3Factory.gzip_upload2S3_private(manifestSerialized, filename, s3UploadConfig, s3);
+        return s3Factory.signURL(filename, s3);
       }
 
       return {

@@ -1,6 +1,6 @@
 // Generic Functions
 (function( ) {
-    var datasetHelper = (function( ) {
+    var datasetHelper = (function() {
    
         get_headers = (sheet, headerLineNum) => { 
                 var loc = Object.keys(sheet).filter(k=>k[1]==headerLineNum && k.length==2 && sheet[k].t !== 'z');
@@ -82,7 +82,7 @@
             return indexes;
         }
 
-        Type_Category_inclusion = (sheet) => {
+        Type_Category_inclusion = (sheet, _) => {
             var error = {};
             var subCategoryArr = this.get_fieldValues(sheet, 1, 'TYPE');
             var categoryArr = this.get_fieldValues(sheet, 1, 'CATEGORY');

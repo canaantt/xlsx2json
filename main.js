@@ -41,7 +41,6 @@ exports.run = () => {
     // Serialize Sheets (Generic)
     sheetsSerialized = [];
     sheets.forEach(sheet => {
-        console.log(sheet.name);
         sheetsSerialized = sheetsSerialized.concat(serialize.sheet(sheet, _, XLSX));
     }); 
 
@@ -52,6 +51,6 @@ exports.run = () => {
     manifestSerialized = serialize.manifest(sheetsSerialized, uploadResults);
 
     // Upload Manifest To S3 (Specific)
-    manifestURL =save.s3(manifestSerialized, 'projectId', s3UploadConfig, AWS, s3, zlib);
-    
+    manifestURL = save.s3(manifestSerialized, 'projectId', s3UploadConfig, AWS, s3, zlib);
+    console.log(manifestURL);
 }

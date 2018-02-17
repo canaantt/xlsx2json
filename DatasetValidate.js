@@ -22,7 +22,7 @@
       if('sheet_specific_checking' in requirements[type]) {
           var e = {};
           requirements[type]['sheet_specific_checking'].forEach(functionName=>{
-              e[functionName] = helper[functionName](sheet.data);
+              e[functionName] = helper[functionName](sheet.data, _);
           });
           err['sheet_specific_checking'] = e;
       }
