@@ -86,7 +86,7 @@
               });
               var obj = {};
               obj.type = 'PSMAP';
-              obj.name = sheet.name;
+              obj.name = 'PSMAP';
               obj.res = patientSampleMapping;
               result.push(obj);
               // #endregion Patient-Sample Mapping
@@ -254,8 +254,30 @@
           }
       }
   
-      serializeManifest = (urls, dataTypes, dexieSchema) => { 
-  
+      serializeManifest = (sheetsSerialized, uploadResults) => { 
+        var manifest = {};
+        manifest['files' ]= uploadResults;
+        var eventJSON = sheetsSerialized.find(r=>r.type === 'EVENT');
+        if(eventJSON !== undefined) { manifest['events'] = eventJSON.res.map; }
+        var patientJSON = sheetsSerialized.find(r=>r.type === 'PATIENT');
+        if(patientJSON !== undefined) { manifest['fields'] = patientJSON.res.fields;}
+        var schema = {
+            'dataset' : 'name',
+            'events' : '++, p',
+            'patientSampleMap': 's, p',
+            'patientMeta': 'key'
+        };
+        schema['patient'] = ['p'].concat(Object.keys(manifest['fields'])).join(',');
+        sheetsSerialized.filter(res=> res.type === 'MATRIX' || res.type === 'MUT').forEach(res=>{
+            if(res.type === 'MATRIX') {
+                schema[res.name] = 'm',
+                schema[res.name+'Map'] = 's'
+            } else {
+                schema[res.name] = '++, m, p, t'
+            }
+        })
+        manifest['schema'] = schema;
+        return manifest
       }
       
       return {

@@ -7,6 +7,19 @@ var serialize = require('./DatasetSerialize.js');
 var save = require('./DatasetSave.js');
 var load = require('./DatasetLoad.js');
 var helper = require('./DatasetHelping.js');
+const AWS = require('aws-sdk');
+const s3 = new AWS.S3();
+const zlib = require('zlib');
+// #region S3 config
+var s3UploadConfig = {
+    credentials: new AWS.SharedIniFileCredentials({profile: 'default'}),
+    region: 'us-west-2',
+    params: {Bucket:'canaantt-test'}
+}
+AWS.config.credentials = s3UploadConfig.credentials;
+s3.config.region = s3UploadConfig.region;
+
+
 
 exports.run = () => {
 
@@ -33,12 +46,12 @@ exports.run = () => {
     }); 
 
     // Upload Sheets To S3 (Specific)
-    errors = sheets.map( sheet => save.server(sheet, 'projectId'));
+    uploadResults = sheetsSerialized.map(sheet => save.server(sheet, 'projectId', s3UploadConfig, AWS, s3, zlib));
     
     // Serialize Manifest (Generic)
-    manifestSerialized = serialize.manifest(sheets)
+    manifestSerialized = serialize.manifest(sheetsSerialized, uploadResults);
 
     // Upload Manifest To S3 (Specific)
-    errors =save.s3(manifestSerialized, 'projectId');
+    manifestURL =save.s3(manifestSerialized, 'projectId', s3UploadConfig, AWS, s3, zlib);
     
 }

@@ -2,7 +2,7 @@
 
 // Generic Functions
 (function() {
-    var Load = (function() {
+    var Load = (() => {
    
       xlsx = (excelFile, XLSX) => { 
         const workbook = XLSX.readFile(excelFile, {sheetStubs: true});
