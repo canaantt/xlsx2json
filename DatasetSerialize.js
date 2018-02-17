@@ -11,7 +11,7 @@
           if(meta.type === 'PATIENT') {
               meta.header = data[0];
               data.splice(0, 1);
-              meta.data = data;
+              meta.data = data.filter(d=>d.length!==0);
               var obj = {};
               var res = {};
               var ids = meta.data.map(d=>d[0]);
@@ -226,6 +226,7 @@
               });
               res.ids = ids;
               res.genes = genes;
+              res.mutationTypes = mutTypes;
               res.values = values;
               obj.res = res;
               obj.type = meta.tableType;
