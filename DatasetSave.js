@@ -42,7 +42,16 @@
         result['file'] = s3Factory.signURL(filename, s3);
         return result; 
       }
-      
+
+      local = (sheetSerialized, projectID) => {
+        var result = {};
+        var filename = projectID + '_' + sheetSerialized.name + '.json';
+        result['name'] = sheetSerialized.name;
+        result['dataType'] = sheetSerialized.type;
+        result['file'] = filename;
+        return result; 
+      }
+
       s3 = (manifestSerialized, projectID, s3UploadConfig, AWS, s3, zlib) => { 
         var filename = projectID + '_manifest_json.gz';
         s3Factory.gzip_upload2S3_private(manifestSerialized, filename, s3UploadConfig, s3);
@@ -51,6 +60,7 @@
 
       return {
         server: server,
+        local: local,
         s3: s3
       };
     })();

@@ -229,7 +229,7 @@
               res.mutationTypes = mutTypes;
               res.values = values;
               obj.res = res;
-              obj.type = meta.tableType;
+              obj.type = meta.type;
               obj.name = meta.tableName;
               return obj;
           } else if (meta.type === 'MATRIX') {
@@ -249,7 +249,7 @@
               res.genes = genes;
               res.values = values;
               obj.res = res;
-              obj.type = meta.tableType;
+              obj.type = meta.type;
               obj.name = meta.tableName;
               return obj;
           }
