@@ -4,13 +4,17 @@
   "description": "",
   "main": "xlsx-json.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon node app.js"
   },
   "author": "Jenny Zhang",
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.195.0",
+    "express": "^4.16.2",
     "fs": "0.0.1-security",
+    "http": "0.0.0",
+    "http-server": "^0.11.1",
     "jsonfile": "^4.0.0",
     "jsonfile-promised": "0.0.1",
     "lodash": "^4.17.5",
