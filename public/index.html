@@ -10,11 +10,11 @@
         <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.11.19/xlsx.full.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
         <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-        <script type="text/javascript" src="DatasetValidate.js"></script>
-        <script type="text/javascript" src="DatasetHelping.js"></script>
-        <script type="text/javascript" src="DatasetLoad.js"></script>
-        <script type="text/javascript" src="DatasetSerialize.js"></script>
-        <script type="text/javascript" src="DatasetSave.js"></script>
+        <script type="text/javascript" src="/Uploading_Modules/DatasetValidate.js"></script>
+        <script type="text/javascript" src="/Uploading_Modules/DatasetHelping.js"></script>
+        <script type="text/javascript" src="/Uploading_Modules/DatasetLoad.js"></script>
+        <script type="text/javascript" src="/Uploading_Modules/DatasetSerialize.js"></script>
+        <script type="text/javascript" src="/Uploading_Modules/DatasetSave.js"></script>
         <title>
             Test parsing excel in browser.
         </title>
@@ -30,12 +30,13 @@
             var data;
             var sheets; 
             var sheetsSerialized = [];
+            var manifestSerialized; 
             var projectID = 'hardCodedProjectID';
             var db = new Dexie("userData");
-            $.getJSON("DatasetGenemap.json", function(result){
+            $.getJSON("/Uploading_Modules/DatasetGenemap.json", function(result){
                 genemap = result;
             });
-            $.getJSON("DatasetRequirements.json", function(result){
+            $.getJSON("/Uploading_Modules/DatasetRequirements.json", function(result){
                 requirements = result;
             });
             function handleFile(e) {
@@ -48,7 +49,7 @@
                     sheets = workbook.SheetNames.map( name => ({ name: name, data: workbook.Sheets[name] }));
                     var errors = {};
                     errors['sheet_level'] = sheets.map(sheet => Validator.validateSheet(sheet, requirements, _, datasetHelper));
-    
+
                     // Validate Workbook (Generic)
                     errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
                     errors['patientID_overlapping'] = Validator.validateWorkbookPatientIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
@@ -59,7 +60,7 @@
                         sheetsSerialized = sheetsSerialized.concat(Serializer.sheet(sheet, _, XLSX));
                     }); 
                     uploadResults = sheetsSerialized.map(sheet => Save.local(sheet, projectID));
-    
+
                     // Serialize Manifest (Generic)
                     manifestSerialized = Serializer.manifest(sheetsSerialized, uploadResults);
                     console.log(manifestSerialized);
@@ -67,34 +68,50 @@
                     db.version(1).stores(manifestSerialized.schema);
                     // Open the database
                     db.dataset.put({name: projectID});
-                    
-                    // db.friends.put({name: "Nicolas", shoeSize: 8}).then (function(){
-                    //     //
-                    //     // Then when data is stored, read from it
-                    //     //
-                    //     return db.friends.get('Nicolas');
-                    // }).then(function (friend) {
-                    //     //
-                    //     // Display the result
-                    //     //
-                    //     alert ("Nicolas has shoe size " + friend.shoeSize);
-                    // }).catch(function(error) {
-                    //     //
-                    //     // Finally don't forget to catch any error
-                    //     // that could have happened anywhere in the
-                    //     // code blocks above.
-                    //     //
-                    //     alert ("Ooops: " + error);
-                    // });
+                    sheets.forEach(sheet=>{
+                        var type = sheet.name.split('-')[0];
+                        var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true});
+                        data.splice(0, 1);
+                        switch (type){
+                            case 'PATIENT':
+                                data.forEach(d=>{
+                                    var obj = {};
+                                    manifestSerialized.schema.patient.split(',').forEach((k, i)=>{
+                                        obj[k] = d[i]
+                                    });
+                                    db.patient.put(obj)
+                                });
+                                // db.patientMeta.put();
+                                break;
+                            case 'EVENT':
+                                db.events.put();
+                                break;
+                            case 'SAMPLE':
+                                db.patientSampleMap.put();
+                                db.sample.put();
+                                break;
+                            case 'MATRIX':
+                                break;
 
+
+                        }
+                            
+                    });
+                    // sheetsSerialized.find(s=>s.type==='EVENT').res.value.forEach(obj=>{
+                    //     db.events.put({
+                    //         'p': obj[0],
+                    //         'subtype':obj[1],
+                    //         'type': obj[],
+                    //         'start': obj[2],
+                    //         'end': obj[3],
+                    //         'data': obj[4]
+                    //     });
+                    // });
                     
-                    // xlsx2json(workbook);
-                    /* DO SOMETHING WITH workbook HERE */
                 };
                 if(rABS) reader.readAsBinaryString(f); else reader.readAsArrayBuffer(f);
             }
             input_dom_element.addEventListener('change', handleFile, false);
-
         </script>
     </body>
 </html>
