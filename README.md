@@ -4,8 +4,8 @@
 
 - [x] patientSampleMap
 - [ ] mut 
-- [x] <matrix>
-- [x] <matrix>Map
+- [x] matrix
+- [x] matrixMap
 - [x] events
 - [x] patient
 - [x] genesets
