@@ -68,31 +68,64 @@
                     db.version(1).stores(manifestSerialized.schema);
                     // Open the database
                     db.dataset.put({name: projectID});
-                    sheets.forEach(sheet=>{
+                    sheets.forEach(sheet => {
                         var type = sheet.name.split('-')[0];
                         var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true});
-                        data.splice(0, 1);
                         switch (type){
                             case 'PATIENT':
+                                data.splice(0, 1);
                                 data.forEach(d=>{
                                     var obj = {};
-                                    manifestSerialized.schema.patient.split(',').forEach((k, i)=>{
+                                    manifestSerialized.schema.patient.split(',').forEach((k, i) => {
                                         obj[k] = d[i]
                                     });
-                                    db.patient.put(obj)
+                                    db.patient.put(obj);
                                 });
                                 // db.patientMeta.put();
                                 break;
                             case 'EVENT':
+                                data.splice(0, 1);
                                 db.events.put();
                                 break;
                             case 'SAMPLE':
-                                db.patientSampleMap.put();
-                                db.sample.put();
+                                var header = data[0];
+                                data.splice(0, 1);
+                                var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
+                                var sp_ind = header.map(h=>h.toUpperCase()).indexOf('SAMPLEID');
+                                data.forEach(d => {
+                                    var obj = {};
+                                    obj.p = d[pt_ind];
+                                    obj.s = d[sp_ind];
+                                    db.patientSampleMap.put(obj);
+                                });
+                                // db.sample.put();
                                 break;
                             case 'MATRIX':
+                                data.splice(0, 2);
+                                data[0].shift(1);
+                                var samples = data[0];
+                                var collectionName = sheet.name.split('-')[2];
+                                var mapCollectionName = collectionName + 'Map';
+                                samples.forEach((s,i) => {
+                                    var obj = {};
+                                    obj.s = s;
+                                    obj.i = i;
+                                    db[mapCollectionName].put(obj);
+                                });
+                                data.splice(0, 1);
+                                data.forEach((d,i) => {
+                                    var obj = {};
+                                    obj.m = d[0];
+                                    d.shift(1);
+                                    obj.d = d;
+                                    obj.max = d.reduce((a, b) => Math.max(a, b));
+                                    obj.min = d.reduce((a, b) => Math.min(a, b));
+                                    obj.mean = d.reduce((a, b) => a = a+b)/d.length;
+                                    db[collectionName].put(obj);
+                                });
                                 break;
-
+                            case 'MUT':
+                                break;
 
                         }
                             
