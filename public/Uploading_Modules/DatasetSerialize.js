@@ -258,18 +258,26 @@
       serializeManifest = (sheetsSerialized, uploadResults) => { 
         var manifest = {};
         manifest['files' ]= uploadResults;
-        var eventJSON = sheetsSerialized.find(r=>r.type === 'EVENT');
+        var eventJSON = sheetsSerialized.find(r => r.type === 'EVENT');
         if(eventJSON !== undefined) { manifest['events'] = eventJSON.res.map; }
-        var patientJSON = sheetsSerialized.find(r=>r.type === 'PATIENT');
+        var patientJSON = sheetsSerialized.find(r => r.type === 'PATIENT');
         if(patientJSON !== undefined) { manifest['fields'] = patientJSON.res.fields;}
+        var sampleJSON = sheetsSerialized.find(r => r.type === 'SAMPLE');
+        
         var schema = {
             'dataset' : 'name',
             'events' : '++, p',
             'patientSampleMap': 's, p',
-            'patientMeta': 'key'
+            'patientMeta': 'key', 
+            'sampleMeta': 'key',
+            'geneset': 'n', 
+            'cohort': 'n'
         };
         schema['patient'] = ['p'].concat(Object.keys(manifest['fields'])).join(',');
-        sheetsSerialized.filter(res=> res.type === 'MATRIX' || res.type === 'MUT').forEach(res=>{
+        if(sampleJSON != undefined) {
+            schema['sample'] = ['s'].concat(Object.keys(sampleJSON.res.fields)).join(',');
+        }
+        sheetsSerialized.filter(res => res.type === 'MATRIX' || res.type === 'MUT').forEach(res => {
             if(res.type === 'MATRIX') {
                 schema[res.name] = 'm',
                 schema[res.name+'Map'] = 's'

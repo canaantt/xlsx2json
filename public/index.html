@@ -70,11 +70,11 @@
                     db.dataset.put({name: projectID});
                     sheets.forEach(sheet => {
                         var type = sheet.name.split('-')[0];
-                        var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true});
+                        var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true, blankrows: false});
                         switch (type){
                             case 'PATIENT':
                                 data.splice(0, 1);
-                                data.forEach(d=>{
+                                data.forEach(d => {
                                     var obj = {};
                                     manifestSerialized.schema.patient.split(',').forEach((k, i) => {
                                         obj[k] = d[i]
@@ -83,9 +83,43 @@
                                 });
                                 // db.patientMeta.put();
                                 break;
-                            case 'EVENT':
+                            case 'SAMPLE':
+                                var header = data[0];
                                 data.splice(0, 1);
-                                db.events.put();
+                                var pt_ind = header.map(h => h.toUpperCase()).indexOf('PATIENTID');
+                                data.forEach(d => d.splice(pt_ind, 1));
+                                data.forEach(d => {
+                                    var obj = {};
+                                    manifestSerialized.schema.sample.split(',').forEach((k, i) => {
+                                        obj[k] = d[i]
+                                    });
+                                    db.sample.put(obj);
+                                });
+                                // db.sampleMeta.put();
+                                break;
+                            case 'EVENT':
+                                var header = data[0];
+                                var pt_ind = header.map(h => h.toUpperCase()).indexOf('PATIENTID');
+                                var start_ind = header.map(h => h.toUpperCase()).indexOf('STARTDATE');
+                                var end_ind = header.map(h => h.toUpperCase()).indexOf('ENDDATE');
+                                var subtype_ind = header.map(h => h.toUpperCase()).indexOf('TYPE');
+                                var type_ind = header.map(h => h.toUpperCase()).indexOf('CATEGORY');
+                                var data_header = header.filter(h => [header[pt_ind], header[start_ind], header[end_ind], 
+                                                  header[subtype_ind], header[type_ind]].indexOf(h) == -1);
+                                var data_indices = data_header.map(h => header.indexOf(h));
+                                data.splice(0, 1);
+                                data.forEach(d => {
+                                    var obj = {};
+                                    obj.p = d[pt_ind];
+                                    obj.start = d[start_ind];
+                                    obj.end = d[end_ind];
+                                    obj.subtype = d[subtype_ind];
+                                    obj.type = d[type_ind];
+                                    var o = {};
+                                    data_indices.forEach((ind) => o[header[ind]] = d[ind] );
+                                    obj.data = o;
+                                    db.events.put(obj);
+                                });
                                 break;
                             case 'SAMPLE':
                                 var header = data[0];
@@ -126,21 +160,19 @@
                                 break;
                             case 'MUT':
                                 break;
+                            case 'GENESETS':
+                                data.forEach(d => {
+                                    var obj = {};
+                                    obj.n = d[0];
+                                    d.shift(1);
+                                    obj.data = d;
+                                    db.geneset.put(obj);
+                                });
+                                break;
 
                         }
                             
-                    });
-                    // sheetsSerialized.find(s=>s.type==='EVENT').res.value.forEach(obj=>{
-                    //     db.events.put({
-                    //         'p': obj[0],
-                    //         'subtype':obj[1],
-                    //         'type': obj[],
-                    //         'start': obj[2],
-                    //         'end': obj[3],
-                    //         'data': obj[4]
-                    //     });
-                    // });
-                    
+                    });                
                 };
                 if(rABS) reader.readAsBinaryString(f); else reader.readAsArrayBuffer(f);
             }

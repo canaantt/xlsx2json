@@ -1,5 +1,17 @@
 # xlsx2json
 
-- function xlsx2json - parse xlsx to json object required for Oncoscape V3
-- upload_validation.js - module to validate either xlsx workbook or parsed json object
+- Insertion into IndexedDB
+[x] - patientSampleMap
+[ ] - mut 
+[x] - <matrix>
+[x] - <matrix>Map
+[x] - events
+[x] - patient
+[x] - genesets
+[ ] - dataset
+[ ] - patientMeta
+[x] - sample 
+[ ] - sampleMeta
 
+cohorts: 'n' is the key 
+genesets: 'n' is the key 
