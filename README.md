@@ -9,8 +9,8 @@
 - [x] events
 - [x] patient
 - [x] genesets
-- [ ] dataset
-- [ ] patientMeta
+- [x] dataset
+- [x] patientMeta
 - [x] sample 
 - [ ] sampleMeta
 

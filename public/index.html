@@ -70,9 +70,9 @@
                     data = e.target.result;
                     if(!rABS) data = new Uint8Array(data);
                     workbook = XLSX.read(data, {sheetStubs: true, type: rABS ? 'binary' : 'array'});
-                    sheets = workbook.SheetNames.map( name => ({ name: name, data: workbook.Sheets[name] }));
+                    sheets = workbook.SheetNames.map( name=>({ name: name, data: workbook.Sheets[name] }));
                     var errors = {};
-                    errors['sheet_level'] = sheets.map(sheet => Validator.validateSheet(sheet, requirements, _, datasetHelper));
+                    errors['sheet_level'] = sheets.map(sheet=>Validator.validateSheet(sheet, requirements, _, datasetHelper));
 
                     // Validate Workbook (Generic)
                     errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
@@ -80,10 +80,10 @@
                     errors['sampleID_overlapping'] = Validator.validateWorkbookSampleIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
                     errors['geneID_overlapping'] = Validator.validateWorkbookGeneIDsOverlapping(sheets, requirements, genemap, _, datasetHelper);
                     
-                    sheets.forEach(sheet => {
+                    sheets.forEach(sheet=>{
                         sheetsSerialized = sheetsSerialized.concat(Serializer.sheet(sheet, _, XLSX));
                     }); 
-                    uploadResults = sheetsSerialized.map(sheet => Save.local(sheet, projectID));
+                    uploadResults = sheetsSerialized.map(sheet=>Save.local(sheet, projectID));
 
                     // Serialize Manifest (Generic)
                     manifestSerialized = Serializer.manifest(sheetsSerialized, uploadResults);
@@ -93,18 +93,16 @@
                     // Open the database
                     var datasetObj = {};
                     datasetObj.name = projectID;
+                    datasetObj.tables = [];
                     
-                    datasetObj.fields = {};
-                    datasetObj.tables = {};
-                    
-                    sheets.forEach(sheet => {
+                    sheets.forEach(sheet=>{
                         var type = sheet.name.split('-')[0];
                         var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true, blankrows: false});
                         switch (type){
                             case 'PATIENT':
                                 
                                 // #region dataset.field
-                                var fields = {};
+                                var fields = [];
                                 var ctype = CollectionTypeEnum['PATIENT'];
                                 var header = data[0];
                                 data.splice(0, 1);
@@ -117,70 +115,129 @@
                                     }
                                     return sheet.data[c[0]+row].t;
                                 });
-                                loc.forEach(function(l, i){
+                                fields = loc.map(function(l, i){
+                                    var obj = {};
+                                    obj.key = sheet.data[l].v;
+                                    obj.ctype = ctype;
+                                    obj.label = obj.key.replace('_', ' ');
+                                    obj.tbl = 'patient';
+                                    
                                     var v;
                                     if(colTypes[i] === 'n') {
-                                        var string2float = meta.data.map(d=>parseFloat(d[i]));
+                                        obj.type = 'NUMBER';
+                                        var string2float = data.map(d=>parseFloat(d[i]));
                                         v = {
                                             'min' : _.min(string2float),
                                             'max' : _.max(string2float)
                                         }
                                     } else {
-                                        v = _.uniq(meta.data.map(d=>d[i]));
+                                        obj.type = 'STRING';
+                                        v = _.uniq(data.map(d=>d[i]));
                                         if(v.indexOf(undefined) > -1) {
                                             v.splice(v.indexOf(undefined), 1);
                                         }
                                     }
-                                    fields[header[i]] = v;
+                                    obj.values = v;
+                                    return obj;
                                 });
-                                fields = _.omit(fields, Object.keys(fields)[Object.keys(fields).map(f=>f.toUpperCase()).indexOf('PATIENTID')]);
-
+                                fields.splice(fields.map(f=>f.key.toUpperCase()).indexOf('PATIENTID'), 1);
+                                datasetObj.fields = fields;
+                                fields.forEach(f=>db.patientMeta.put(f));
+                                db.patientMeta.put(fields);
+                                var table = {};
+                                table.tbl = 'patient';
+                                table.map = 'patientMap';
+                                table.label = 'Patient';
+                                table.ctype = ctype;
+                                datasetObj.tables.push(table);
                                 // #endregion dataset.field
 
-                                data.forEach(d => {
+                                data.forEach(d=>{
                                     var obj = {};
-                                    manifestSerialized.schema.patient.split(',').forEach((k, i) => {
+                                    manifestSerialized.schema.patient.split(',').forEach((k, i)=>{
                                         obj[k] = d[i]
                                     });
                                     db.patient.put(obj);
                                 });
-                                // db.patientMeta.put();
-                                
                                 break;
                             case 'SAMPLE':
+                                var sample_fields = [];
+                                var ctype = CollectionTypeEnum['SAMPLE'];
                                 var header = data[0];
                                 data.splice(0, 1);
-                                var pt_ind = header.map(h => h.toUpperCase()).indexOf('PATIENTID');
+                                var loc = Object.keys(sheet.data).filter(k=>k[1]=='1'&& k.length==2&&sheet.data[k].t!=='z');
+                                var colTypes = loc.map(c=>{
+                                    var row = 2;
+                                    while (sheet.data[c[0]+row].t === 'z') {
+                                        row++;
+                                    }
+                                    return sheet.data[c[0]+row].t;
+                                });
+                                sample_fields = loc.map(function(l, i){
+                                    var obj = {};
+                                    obj.key = sheet.data[l].v;
+                                    obj.ctype = ctype;
+                                    obj.label = obj.key.replace('_', ' ');
+                                    obj.tbl = 'sample';
+                                    
+                                    var v;
+                                    if(colTypes[i] === 'n') {
+                                        obj.type = 'NUMBER';
+                                        var string2float = data.map(d=>parseFloat(d[i]));
+                                        v = {
+                                            'min' : _.min(string2float),
+                                            'max' : _.max(string2float)
+                                        }
+                                    } else {
+                                        obj.type = 'STRING';
+                                        v = _.uniq(data.map(d=>d[i]));
+                                        if(v.indexOf(undefined) > -1) {
+                                            v.splice(v.indexOf(undefined), 1);
+                                        }
+                                    }
+                                    obj.values = v;
+                                    return obj;
+                                });
+                                sample_fields.splice(sample_fields.map(f=>f.key.toUpperCase()).indexOf('PATIENTID'), 1);
+                                sample_fields.splice(sample_fields.map(f=>f.key.toUpperCase()).indexOf('SAMPLEID'), 1);
+                                // sample_fields.forEach(f=>db.sampleMeta.put(f));
+
+                                var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
                                 var sp_ind = header.map(h=>h.toUpperCase()).indexOf('SAMPLEID');
-                                data.forEach(d => {
+                                data.forEach(d=>{
                                     var obj = {};
                                     obj.p = d[pt_ind];
                                     obj.s = d[sp_ind];
                                     db.patientSampleMap.put(obj);
                                 });
-                                data.forEach(d => d.splice(pt_ind, 1));
-                                data.forEach(d => {
+                                data.forEach(d=>d.splice(pt_ind, 1));
+                                data.forEach(d=>{
                                     var obj = {};
-                                    manifestSerialized.schema.sample.split(',').forEach((k, i) => {
+                                    manifestSerialized.schema.sample.split(',').forEach((k, i)=>{
                                         obj[k] = d[i]
                                     });
                                     db.sample.put(obj);
                                 });
-                                
+                                var table = {};
+                                table.tbl = 'sample';
+                                table.map = 'patientSampleMap';
+                                table.label = 'Sample';
+                                table.ctype = CollectionTypeEnum['SAMPLE'];
+                                datasetObj.tables.push(table);
                                 // db.sampleMeta.put();
                                 break;
                             case 'EVENT':
                                 var header = data[0];
-                                var pt_ind = header.map(h => h.toUpperCase()).indexOf('PATIENTID');
-                                var start_ind = header.map(h => h.toUpperCase()).indexOf('STARTDATE');
-                                var end_ind = header.map(h => h.toUpperCase()).indexOf('ENDDATE');
-                                var subtype_ind = header.map(h => h.toUpperCase()).indexOf('TYPE');
-                                var type_ind = header.map(h => h.toUpperCase()).indexOf('CATEGORY');
-                                var data_header = header.filter(h => [header[pt_ind], header[start_ind], header[end_ind], 
+                                var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
+                                var start_ind = header.map(h=>h.toUpperCase()).indexOf('STARTDATE');
+                                var end_ind = header.map(h=>h.toUpperCase()).indexOf('ENDDATE');
+                                var subtype_ind = header.map(h=>h.toUpperCase()).indexOf('TYPE');
+                                var type_ind = header.map(h=>h.toUpperCase()).indexOf('CATEGORY');
+                                var data_header = header.filter(h=>[header[pt_ind], header[start_ind], header[end_ind], 
                                                   header[subtype_ind], header[type_ind]].indexOf(h) == -1);
-                                var data_indices = data_header.map(h => header.indexOf(h));
+                                var data_indices = data_header.map(h=>header.indexOf(h));
                                 data.splice(0, 1);
-                                data.forEach(d => {
+                                data.forEach(d=>{
                                     var obj = {};
                                     obj.p = d[pt_ind];
                                     obj.start = d[start_ind];
@@ -188,7 +245,7 @@
                                     obj.subtype = d[subtype_ind];
                                     obj.type = d[type_ind];
                                     var o = {};
-                                    data_indices.forEach((ind) => o[header[ind]] = d[ind] );
+                                    data_indices.forEach((ind)=>o[header[ind]] = d[ind] );
                                     obj.data = o;
                                     db.events.put(obj);
                                 });
@@ -200,6 +257,12 @@
                                     return o;
                                 });
                                 datasetObj.events = events;
+                                var table = {};
+                                table.tbl = 'events';
+                                table.map = 'eventsMap';
+                                table.label = 'events';
+                                table.ctype = CollectionTypeEnum['EVENT'];
+                                datasetObj.tables.push(table);
                                 break;
                             case 'MATRIX':
                                 data.splice(0, 2);
@@ -207,28 +270,40 @@
                                 var samples = data[0];
                                 var collectionName = sheet.name.split('-')[2];
                                 var mapCollectionName = collectionName + 'Map';
-                                samples.forEach((s,i) => {
+                                samples.forEach((s,i)=>{
                                     var obj = {};
                                     obj.s = s;
                                     obj.i = i;
                                     db[mapCollectionName].put(obj);
                                 });
                                 data.splice(0, 1);
-                                data.forEach((d,i) => {
+                                data.forEach((d,i)=>{
                                     var obj = {};
                                     obj.m = d[0];
                                     d.shift(1);
                                     obj.d = d;
-                                    obj.max = d.reduce((a, b) => Math.max(a, b));
-                                    obj.min = d.reduce((a, b) => Math.min(a, b));
-                                    obj.mean = d.reduce((a, b) => a = a+b)/d.length;
+                                    obj.max = d.reduce((a, b)=>Math.max(a, b));
+                                    obj.min = d.reduce((a, b)=>Math.min(a, b));
+                                    obj.mean = d.reduce((a, b)=>a = a+b)/d.length;
                                     db[collectionName].put(obj);
                                 });
+                                var table = {};
+                                table.tbl = collectionName.toLowerCase();
+                                table.map = table.tbl + 'Map';
+                                table.label = collectionName.replace('-', ' ');
+                                table.ctype = CollectionTypeEnum[collectionName.toUpperCase()];
+                                datasetObj.tables.push(table);
                                 break;
                             case 'MUT':
+                                var table = {};
+                                table.tbl = 'mutations';
+                                table.map = 'mutationsMap';
+                                table.label = 'mutations';
+                                table.ctype = CollectionTypeEnum['MUTATION'];
+                                datasetObj.tables.push(table);
                                 break;
                             case 'GENESETS':
-                                data.forEach(d => {
+                                data.forEach(d=>{
                                     var obj = {};
                                     obj.n = d[0];
                                     d.shift(1);
