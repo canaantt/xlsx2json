@@ -33,6 +33,30 @@
             var manifestSerialized; 
             var projectID = 'hardCodedProjectID';
             var db = new Dexie("userData");
+            var CollectionTypeEnum = {
+                UNDEFINED : 0,
+                SAMPLE : 1,
+                PATIENT : 2,
+                CNV : 4,
+                GISTIC : 8,
+                GISTIC_THRESHOLD : 16,
+                MUTATION : 32,
+                MIRNA : 64,
+                MRNA : 128,
+                PROTEIN : 256,
+                METH : 512,
+                GENE_FAMILY : 1024,
+                GENE_TYPE : 2048,
+                HIC : 4096,
+                EVENT : 8192,
+                RNA : 16384,
+                TAD : 32768
+                // ,
+                // EXP : CollectionTypeEnum.PROTEIN | CollectionTypeEnum.MIRNA | CollectionTypeEnum.MRNA,
+                // MOLECULAR : CollectionTypeEnum.CNV | CollectionTypeEnum.GISTIC |
+                //     CollectionTypeEnum.GISTIC_THRESHOLD | CollectionTypeEnum.MUTATION | CollectionTypeEnum.MIRNA |
+                //     CollectionTypeEnum.MRNA | CollectionTypeEnum.EXP | CollectionTypeEnum.METH | CollectionTypeEnum.RNA
+            };
             $.getJSON("/Uploading_Modules/DatasetGenemap.json", function(result){
                 genemap = result;
             });
@@ -67,13 +91,52 @@
                     // Define a schema
                     db.version(1).stores(manifestSerialized.schema);
                     // Open the database
-                    db.dataset.put({name: projectID});
+                    var datasetObj = {};
+                    datasetObj.name = projectID;
+                    
+                    datasetObj.fields = {};
+                    datasetObj.tables = {};
+                    
                     sheets.forEach(sheet => {
                         var type = sheet.name.split('-')[0];
                         var data = XLSX.utils.sheet_to_json(sheet.data, {header:1, raw:true, blankrows: false});
                         switch (type){
                             case 'PATIENT':
+                                
+                                // #region dataset.field
+                                var fields = {};
+                                var ctype = CollectionTypeEnum['PATIENT'];
+                                var header = data[0];
                                 data.splice(0, 1);
+                                data = data.filter(d=>d.length!==0);
+                                var loc = Object.keys(sheet.data).filter(k=>k[1]=='1'&& k.length==2&&sheet.data[k].t!=='z');
+                                var colTypes = loc.map(c=>{
+                                    var row = 2;
+                                    while (sheet.data[c[0]+row].t === 'z') {
+                                        row++;
+                                    }
+                                    return sheet.data[c[0]+row].t;
+                                });
+                                loc.forEach(function(l, i){
+                                    var v;
+                                    if(colTypes[i] === 'n') {
+                                        var string2float = meta.data.map(d=>parseFloat(d[i]));
+                                        v = {
+                                            'min' : _.min(string2float),
+                                            'max' : _.max(string2float)
+                                        }
+                                    } else {
+                                        v = _.uniq(meta.data.map(d=>d[i]));
+                                        if(v.indexOf(undefined) > -1) {
+                                            v.splice(v.indexOf(undefined), 1);
+                                        }
+                                    }
+                                    fields[header[i]] = v;
+                                });
+                                fields = _.omit(fields, Object.keys(fields)[Object.keys(fields).map(f=>f.toUpperCase()).indexOf('PATIENTID')]);
+
+                                // #endregion dataset.field
+
                                 data.forEach(d => {
                                     var obj = {};
                                     manifestSerialized.schema.patient.split(',').forEach((k, i) => {
@@ -82,11 +145,19 @@
                                     db.patient.put(obj);
                                 });
                                 // db.patientMeta.put();
+                                
                                 break;
                             case 'SAMPLE':
                                 var header = data[0];
                                 data.splice(0, 1);
                                 var pt_ind = header.map(h => h.toUpperCase()).indexOf('PATIENTID');
+                                var sp_ind = header.map(h=>h.toUpperCase()).indexOf('SAMPLEID');
+                                data.forEach(d => {
+                                    var obj = {};
+                                    obj.p = d[pt_ind];
+                                    obj.s = d[sp_ind];
+                                    db.patientSampleMap.put(obj);
+                                });
                                 data.forEach(d => d.splice(pt_ind, 1));
                                 data.forEach(d => {
                                     var obj = {};
@@ -95,6 +166,7 @@
                                     });
                                     db.sample.put(obj);
                                 });
+                                
                                 // db.sampleMeta.put();
                                 break;
                             case 'EVENT':
@@ -120,19 +192,14 @@
                                     obj.data = o;
                                     db.events.put(obj);
                                 });
-                                break;
-                            case 'SAMPLE':
-                                var header = data[0];
-                                data.splice(0, 1);
-                                var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
-                                var sp_ind = header.map(h=>h.toUpperCase()).indexOf('SAMPLEID');
-                                data.forEach(d => {
-                                    var obj = {};
-                                    obj.p = d[pt_ind];
-                                    obj.s = d[sp_ind];
-                                    db.patientSampleMap.put(obj);
+                                var uniqueTypes = _.uniq(data.map(d=>d[subtype_ind]));
+                                var events = uniqueTypes.map(t=>{
+                                    var o = {};
+                                    o.type = data.find(d=>d[subtype_ind]===t)[type_ind];
+                                    o.subtype = t;
+                                    return o;
                                 });
-                                // db.sample.put();
+                                datasetObj.events = events;
                                 break;
                             case 'MATRIX':
                                 data.splice(0, 2);
@@ -170,9 +237,9 @@
                                 });
                                 break;
 
-                        }
-                            
-                    });                
+                        }       
+                    });
+                    db.dataset.put(datasetObj);                
                 };
                 if(rABS) reader.readAsBinaryString(f); else reader.readAsArrayBuffer(f);
             }
