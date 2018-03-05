@@ -268,8 +268,8 @@
             'dataset' : 'name',
             'events' : '++, p',
             'patientSampleMap': 's, p',
-            'patientMeta': 'key', 
-            'sampleMeta': 'key',
+            'patientMeta': 'k', 
+            'sampleMeta': 'k',
             'geneset': 'n', 
             'cohort': 'n'
         };

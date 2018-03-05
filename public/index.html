@@ -200,7 +200,7 @@
                                 });
                                 sample_fields.splice(sample_fields.map(f=>f.key.toUpperCase()).indexOf('PATIENTID'), 1);
                                 sample_fields.splice(sample_fields.map(f=>f.key.toUpperCase()).indexOf('SAMPLEID'), 1);
-                                // sample_fields.forEach(f=>db.sampleMeta.put(f));
+                                sample_fields.forEach(f=>db.sampleMeta.put(f));
 
                                 var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
                                 var sp_ind = header.map(h=>h.toUpperCase()).indexOf('SAMPLEID');
