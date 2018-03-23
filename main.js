@@ -1,22 +1,20 @@
 var _ = require('lodash');
 var XLSX = require('XLSX');
-var genemap = require('./DatasetGenemap.json');
-var requirements = require('./DatasetRequirements.json');
-var validate = require('./DatasetValidate.js');
-var serialize = require('./DatasetSerialize.js');
-var save = require('./DatasetSave.js');
-var load = require('./DatasetLoad.js');
-var helper = require('./DatasetHelping.js');
+var genemap = require('./public/Uploading_Modules/DatasetGenemap.json');
+var requirements = require('./public/Uploading_Modules/DatasetRequirements.json');
+var validate = require('./public/Uploading_Modules/DatasetValidate.js');
+var serialize = require('./public/Uploading_Modules/DatasetSerialize.js');
+var save = require('./public/Uploading_Modules/DatasetSave.js');
+var load = require('./public/Uploading_Modules/DatasetLoad.js');
+var helper = require('./public/Uploading_Modules/DatasetHelping.js');
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3();
 const zlib = require('zlib');
 // #region S3 config
 var s3UploadConfig = {
-    credentials: new AWS.SharedIniFileCredentials({profile: 'default'}),
     region: 'us-west-2',
     params: {Bucket:'oncoscape-users-data'}
 }
-AWS.config.credentials = s3UploadConfig.credentials;
 s3.config.region = s3UploadConfig.region;
 
 
