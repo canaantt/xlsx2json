@@ -23,7 +23,7 @@
           });
       },
       signURL: function(FILENAME, s3){
-          var params = { Bucket: 'canaantt-test', 
+          var params = { Bucket: 'oncoscape-users-data', 
                         Key: FILENAME, 
                         Expires: 15552000}; // url expires in 180 Days
           return s3.getSignedUrl('getObject', params);

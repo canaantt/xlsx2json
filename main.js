@@ -14,7 +14,7 @@ const zlib = require('zlib');
 var s3UploadConfig = {
     credentials: new AWS.SharedIniFileCredentials({profile: 'default'}),
     region: 'us-west-2',
-    params: {Bucket:'canaantt-test'}
+    params: {Bucket:'oncoscape-users-data'}
 }
 AWS.config.credentials = s3UploadConfig.credentials;
 s3.config.region = s3UploadConfig.region;
