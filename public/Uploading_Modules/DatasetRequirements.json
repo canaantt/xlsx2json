@@ -16,14 +16,14 @@
         "sheet_specific_checking": ["Type_Category_inclusion"]
     },
     "GENESETS":{
-        "headerLineNum": null
+        "headerLineNum": 1
     },
     "MUT":{
-        "headerLineNum": 3,
+        "headerLineNum": 1,
         "dependencies": ["SAMPLE"]
     },
     "MATRIX":{
-        "headerLineNum": 3,
+        "headerLineNum": 1,
         "dependencies": ["SAMPLE"]
     }
 }

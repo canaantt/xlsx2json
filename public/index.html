@@ -71,18 +71,39 @@
                     if(!rABS) data = new Uint8Array(data);
                     workbook = XLSX.read(data, {sheetStubs: true, type: rABS ? 'binary' : 'array'});
                     sheets = workbook.SheetNames.map( name=>({ name: name, data: workbook.Sheets[name] }));
-                    var errors = {};
-                    errors['sheet_level'] = sheets.map(sheet=>Validator.validateSheet(sheet, requirements, _, datasetHelper));
+                    // var errors = {};
+                    // errors['sheet_level'] = sheets.map(sheet=>Validator.validateSheet(sheet, requirements, _, datasetHelper));
 
-                    // Validate Workbook (Generic)
-                    errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
-                    errors['patientID_overlapping'] = Validator.validateWorkbookPatientIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
-                    errors['sampleID_overlapping'] = Validator.validateWorkbookSampleIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
-                    errors['geneID_overlapping'] = Validator.validateWorkbookGeneIDsOverlapping(sheets, requirements, genemap, _, datasetHelper);
-                    
+                    // // Validate Workbook (Generic)
+                    // errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
+                    // errors['patientID_overlapping'] = Validator.validateWorkbookPatientIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    // errors['sampleID_overlapping'] = Validator.validateWorkbookSampleIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    // errors['geneID_overlapping'] = Validator.validateWorkbookGeneIDsOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    var events = [];
                     sheets.forEach(sheet=>{
-                        sheetsSerialized = sheetsSerialized.concat(Serializer.sheet(sheet, _, XLSX));
-                    }); 
+                        var obj = Serializer.sheet(sheet, _, XLSX);
+                        if (obj.type !== 'EVENT') {
+                            sheetsSerialized = sheetsSerialized.concat(obj);
+                        } else {
+                            events = events.concat(obj);
+                        }
+                    });
+                    var obj = {};
+                    obj.type = 'EVENT';
+                    var ob = {};
+                    var m = {};
+                    var v = [];
+                    events.forEach(e=> {
+                        m[e.res.map.type] = e.res.map.category;
+                        v = v.concat(e.res.value);
+                    });
+                    var type_keys = Object.keys(m);
+                    v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
+                    ob.map = m;
+                    ob.value = v;
+                    obj.res = ob;
+                    sheetsSerialized.concat(obj);
+                    debugger;
                     uploadResults = sheetsSerialized.map(sheet=>Save.local(sheet, projectID));
 
                     // Serialize Manifest (Generic)
