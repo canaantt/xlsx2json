@@ -62,6 +62,7 @@
             });
             $.getJSON("/Uploading_Modules/DatasetRequirements.json", function(result){
                 requirements = result;
+                console.log(requirements);
             });
             function handleFile(e) {
                 var files = e.target.files, f = files[0];
@@ -71,14 +72,14 @@
                     if(!rABS) data = new Uint8Array(data);
                     workbook = XLSX.read(data, {sheetStubs: true, type: rABS ? 'binary' : 'array'});
                     sheets = workbook.SheetNames.map( name=>({ name: name, data: workbook.Sheets[name] }));
-                    // var errors = {};
-                    // errors['sheet_level'] = sheets.map(sheet=>Validator.validateSheet(sheet, requirements, _, datasetHelper));
+                    var errors = {};
+                    errors['sheet_level'] = sheets.map(sheet=>Validator.validateSheet(sheet, requirements, _, datasetHelper));
 
-                    // // Validate Workbook (Generic)
-                    // errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
-                    // errors['patientID_overlapping'] = Validator.validateWorkbookPatientIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
-                    // errors['sampleID_overlapping'] = Validator.validateWorkbookSampleIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
-                    // errors['geneID_overlapping'] = Validator.validateWorkbookGeneIDsOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    // Validate Workbook (Generic)
+                    errors['sheets_existence'] = Validator.validateWorkbookExistence(sheets, requirements, genemap, _, datasetHelper);
+                    errors['patientID_overlapping'] = Validator.validateWorkbookPatientIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    errors['sampleID_overlapping'] = Validator.validateWorkbookSampleIDOverlapping(sheets, requirements, genemap, _, datasetHelper);
+                    errors['geneID_overlapping'] = Validator.validateWorkbookGeneIDsOverlapping(sheets, requirements, genemap, _, datasetHelper);
                     var events = [];
                     sheets.forEach(sheet=>{
                         var obj = Serializer.sheet(sheet, _, XLSX);
@@ -90,6 +91,7 @@
                     });
                     var obj = {};
                     obj.type = 'EVENT';
+                    obj.name = 'EVENT';
                     var ob = {};
                     var m = {};
                     var v = [];
@@ -102,7 +104,8 @@
                     ob.map = m;
                     ob.value = v;
                     obj.res = ob;
-                    sheetsSerialized.concat(obj);
+                    sheetsSerialized = sheetsSerialized.concat(obj);
+                    
                     debugger;
                     uploadResults = sheetsSerialized.map(sheet=>Save.local(sheet, projectID));
 
@@ -250,10 +253,10 @@
                             case 'EVENT':
                                 var header = data[0];
                                 var pt_ind = header.map(h=>h.toUpperCase()).indexOf('PATIENTID');
-                                var start_ind = header.map(h=>h.toUpperCase()).indexOf('STARTDATE');
-                                var end_ind = header.map(h=>h.toUpperCase()).indexOf('ENDDATE');
-                                var subtype_ind = header.map(h=>h.toUpperCase()).indexOf('TYPE');
-                                var type_ind = header.map(h=>h.toUpperCase()).indexOf('CATEGORY');
+                                var start_ind = header.map(h=>h.toUpperCase()).indexOf('START');
+                                var end_ind = header.map(h=>h.toUpperCase()).indexOf('END');
+                                // var subtype_ind = header.map(h=>h.toUpperCase()).indexOf('TYPE');
+                                // var type_ind = header.map(h=>h.toUpperCase()).indexOf('CATEGORY');
                                 var data_header = header.filter(h=>[header[pt_ind], header[start_ind], header[end_ind], 
                                                   header[subtype_ind], header[type_ind]].indexOf(h) == -1);
                                 var data_indices = data_header.map(h=>header.indexOf(h));
@@ -286,7 +289,7 @@
                                 datasetObj.tables.push(table);
                                 break;
                             case 'MATRIX':
-                                data.splice(0, 2);
+                                // data.splice(0, 2);
                                 data[0].shift(1);
                                 var samples = data[0];
                                 var collectionName = sheet.name.split('-')[2];
@@ -315,7 +318,7 @@
                                 table.ctype = CollectionTypeEnum[collectionName.toUpperCase()];
                                 datasetObj.tables.push(table);
                                 break;
-                            case 'MUT':
+                            case 'MUTATION':
                                 var table = {};
                                 table.tbl = 'mutations';
                                 table.map = 'mutationsMap';
